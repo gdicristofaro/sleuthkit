@@ -98,7 +98,7 @@ public class OSUtility {
 		List<OSInfo> infoList = new ArrayList<OSInfo>();
 
 		// Get all OS_INFO artifacts for this case
-		ArrayList<BlackboardArtifact> results = skCase.getBlackboardArtifacts(BlackboardArtifact.Type.TSK_OS_INFO);
+		ArrayList<BlackboardArtifact> results = skCase.getBlackboardArtifacts(BlackboardArtifact.Type.TSK_OS_INFO.getTypeID());
 
 		for (BlackboardArtifact art : results) {
 

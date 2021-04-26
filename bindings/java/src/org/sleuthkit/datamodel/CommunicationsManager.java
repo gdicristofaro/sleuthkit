@@ -511,7 +511,7 @@ public final class CommunicationsManager {
 	private BlackboardArtifact getOrCreateAccountFileInstanceArtifact(Account.Type accountType, String accountUniqueID, String moduleName, Content sourceFile) throws TskCoreException {
 		BlackboardArtifact accountArtifact = getAccountFileInstanceArtifact(accountType, accountUniqueID, sourceFile);
 		if (accountArtifact == null) {
-			accountArtifact = db.newBlackboardArtifact(BlackboardArtifact.Type.TSK_ACCOUNT, sourceFile.getId());
+			accountArtifact = db.newBlackboardArtifact(BlackboardArtifact.Type.TSK_ACCOUNT.getTypeID(), sourceFile.getId());
 			Collection<BlackboardAttribute> attributes = new ArrayList<>();
 			attributes.add(new BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_ACCOUNT_TYPE, moduleName, accountType.getTypeName()));
 			attributes.add(new BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_ID, moduleName, accountUniqueID));
@@ -1231,7 +1231,7 @@ public final class CommunicationsManager {
 	public List<AccountFileInstance> getAccountFileInstances(Account account) throws TskCoreException {
 		List<AccountFileInstance> accountFileInstanceList = new ArrayList<>();
 
-		List<BlackboardArtifact> artifactList = getSleuthkitCase().getBlackboardArtifacts(BlackboardArtifact.Type.TSK_ACCOUNT, BlackboardAttribute.ATTRIBUTE_TYPE.TSK_ID, account.getTypeSpecificID());
+		List<BlackboardArtifact> artifactList = getSleuthkitCase().getBlackboardArtifacts(BlackboardArtifact.Type.TSK_ACCOUNT.getTypeID(), BlackboardAttribute.ATTRIBUTE_TYPE.TSK_ID, account.getTypeSpecificID());
 
 		if (artifactList != null && !artifactList.isEmpty()) {
 			for (BlackboardArtifact artifact : artifactList) {

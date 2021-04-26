@@ -592,9 +592,9 @@ public class SleuthkitCase {
 		acquireSingleUserCaseWriteLock();
 		try {
 			statement = connection.createStatement();
-			for (BlackboardArtifact.Type type : BlackboardArtifact.Type.STANDARD_TYPES.values()) {
+			for (BlackboardArtifact.Type type : BlackboardArtifact.Type.STANDARD_TYPES) {
 				try {
-					statement.execute("INSERT INTO blackboard_artifact_types (artifact_type_id, type_name, display_name, category_type) VALUES (" + type.getTypeID() + " , '" + type.getLabel() + "', '" + type.getDisplayName() + "' , " + type.getCategory().getID() + ")"); //NON-NLS
+					statement.execute("INSERT INTO blackboard_artifact_types (artifact_type_id, type_name, display_name, category_type) VALUES (" + type.getTypeID() + " , '" + type.getDisplayName() + "', '" + type.getDisplayName() + "' , " + type.getCategory().getID() + ")"); //NON-NLS
 				} catch (SQLException ex) {
 					resultSet = connection.executeQuery(statement, "SELECT COUNT(*) AS count FROM blackboard_artifact_types WHERE artifact_type_id = '" + type.getTypeID() + "'"); //NON-NLS
 					resultSet.next();
@@ -604,11 +604,11 @@ public class SleuthkitCase {
 					resultSet.close();
 					resultSet = null;
 				}
-				this.typeIdToArtifactTypeMap.put(type.getTypeID(), new BlackboardArtifact.Type(type));
-				this.typeNameToArtifactTypeMap.put(type.getLabel(), new BlackboardArtifact.Type(type));
+				this.typeIdToArtifactTypeMap.put(type.getTypeID(), type);
+				this.typeNameToArtifactTypeMap.put(type.getDisplayName(), type);
 			}
 			if (dbType == DbType.POSTGRESQL) {
-				int newPrimaryKeyIndex = Collections.max(Arrays.asList(BlackboardArtifact.Type.STANDARD_TYPES)).getTypeID() + 1;
+				int newPrimaryKeyIndex = Collections.max(BlackboardArtifact.Type.STANDARD_TYPES, (a,b) -> Integer.compare(a.getTypeID(), b.getTypeID())).getTypeID() + 1;
 				statement.execute("ALTER SEQUENCE blackboard_artifact_types_artifact_type_id_seq RESTART WITH " + newPrimaryKeyIndex); //NON-NLS
 			}
 		} finally {
@@ -1187,7 +1187,7 @@ public class SleuthkitCase {
 				"FROM blackboard_artifacts INNER JOIN blackboard_attributes \n" +
 				"ON blackboard_artifacts.artifact_id = blackboard_attributes.artifact_id \n" +
 				"WHERE blackboard_artifacts.artifact_type_id = " +
-					BlackboardArtifact.Type.TSK_TAG_FILE.getTypeID() + 
+					ARTIFACT_TYPE.TSK_TAG_FILE.getTypeID() + 
 					" AND blackboard_attributes.attribute_type_id = " + BlackboardAttribute.ATTRIBUTE_TYPE.TSK_TAG_NAME.getTypeID() 
 					+ ") AS tagNames \n" +
 				"INNER JOIN \n" +
@@ -1197,7 +1197,7 @@ public class SleuthkitCase {
 				"ON tagNames.objId = fileData.objId2 \n" +
 				"LEFT JOIN \n" +
 				"(SELECT value_text AS comment, artifact_id AS tagArtifactId FROM blackboard_attributes WHERE attribute_type_id = " + 
-					BlackboardAttribute.Type.TSK_COMMENT.getTypeID() + ") AS tagComments \n" +
+					BlackboardAttribute.ATTRIBUTE_TYPE.TSK_COMMENT.getTypeID() + ") AS tagComments \n" +
 				"ON tagNames.artifactId = tagComments.tagArtifactId");
 
 			while (resultSet.next()) {
@@ -1236,7 +1236,7 @@ public class SleuthkitCase {
 				"FROM blackboard_artifacts INNER JOIN blackboard_attributes \n" +
 				"ON blackboard_artifacts.artifact_id = blackboard_attributes.artifact_id \n" +
 				"WHERE blackboard_artifacts.artifact_type_id = " +
-					BlackboardArtifact.Type.TSK_TAG_ARTIFACT.getTypeID() + 
+					ARTIFACT_TYPE.TSK_TAG_ARTIFACT.getTypeID() + 
 					" AND blackboard_attributes.attribute_type_id = " + BlackboardAttribute.ATTRIBUTE_TYPE.TSK_TAG_NAME.getTypeID() 
 					+ ") AS tagNames \n" +
 				"INNER JOIN \n" +
@@ -1277,12 +1277,12 @@ public class SleuthkitCase {
 			statement.execute(
 					"DELETE FROM blackboard_attributes WHERE artifact_id IN " //NON-NLS
 					+ "(SELECT artifact_id FROM blackboard_artifacts WHERE artifact_type_id = " //NON-NLS
-					+ BlackboardArtifact.Type.TSK_TAG_FILE.getTypeID()
-					+ " OR artifact_type_id = " + BlackboardArtifact.Type.TSK_TAG_ARTIFACT.getTypeID() + ");"); //NON-NLS
+					+ ARTIFACT_TYPE.TSK_TAG_FILE.getTypeID()
+					+ " OR artifact_type_id = " + ARTIFACT_TYPE.TSK_TAG_ARTIFACT.getTypeID() + ");"); //NON-NLS
 			statement.execute(
 					"DELETE FROM blackboard_artifacts WHERE artifact_type_id = " //NON-NLS
-					+ BlackboardArtifact.Type.TSK_TAG_FILE.getTypeID()
-					+ " OR artifact_type_id = " + BlackboardArtifact.Type.TSK_TAG_ARTIFACT.getTypeID() + ";"); //NON-NLS
+					+ ARTIFACT_TYPE.TSK_TAG_FILE.getTypeID()
+					+ " OR artifact_type_id = " + ARTIFACT_TYPE.TSK_TAG_ARTIFACT.getTypeID() + ";"); //NON-NLS
 
 			return new CaseDbSchemaVersionNumber(3, 0);
 		} finally {
@@ -2381,8 +2381,8 @@ public class SleuthkitCase {
 				BlackboardArtifact.Type.TSK_KEYWORD_HIT.getTypeID() + ", " 
 				+ BlackboardArtifact.Type.TSK_HASHSET_HIT.getTypeID() + ", "
 				+ BlackboardArtifact.Type.TSK_INTERESTING_FILE_HIT.getTypeID() + ", "
-				+ BlackboardArtifact.Type.TSK_TAG_FILE.getTypeID() + ", "
-				+ BlackboardArtifact.Type.TSK_TAG_ARTIFACT.getTypeID() + ", "
+				+ ARTIFACT_TYPE.TSK_TAG_FILE.getTypeID() + ", "
+				+ ARTIFACT_TYPE.TSK_TAG_ARTIFACT.getTypeID() + ", "
 				+ BlackboardArtifact.Type.TSK_ENCRYPTION_DETECTED.getTypeID() + ", "
 				+ BlackboardArtifact.Type.TSK_EXT_MISMATCH_DETECTED.getTypeID() + ", "
 				+ BlackboardArtifact.Type.TSK_INTERESTING_ARTIFACT_HIT.getTypeID() + ", "

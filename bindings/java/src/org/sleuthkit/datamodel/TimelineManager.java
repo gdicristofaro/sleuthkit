@@ -657,7 +657,7 @@ public final class TimelineManager {
 		 * attribute to determine its event type, but give it a generic
 		 * description.
 		 */
-		if (artifact.getArtifactTypeID() == TSK_TL_EVENT.getTypeID()) {
+		if (artifact.getArtifactTypeID() == BlackboardArtifact.Type.TSK_TL_EVENT.getTypeID()) {
 			TimelineEventType eventType;//the type of the event to add.
 			BlackboardAttribute attribute = artifact.getAttribute(new BlackboardAttribute.Type(TSK_TL_EVENT_TYPE));
 			if (attribute == null) {

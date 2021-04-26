@@ -185,7 +185,7 @@ public class ArtifactTest {
         attributes.add(new BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_KEYWORD, MODULE_NAME, "keyword1"));
         
 		// Test: attach an analysis result to the file. 
-		AnalysisResultAdded analysisResultAdded1 = abcTextFile.newAnalysisResult(new BlackboardArtifact.Type(BlackboardArtifact.Type.TSK_KEYWORD_HIT), 
+		AnalysisResultAdded analysisResultAdded1 = abcTextFile.newAnalysisResult(BlackboardArtifact.Type.TSK_KEYWORD_HIT, 
 																		new Score(Score.Significance.LIKELY_NOTABLE, Score.MethodCategory.AUTO), "Keyword hit found", "", "", attributes);
    
 		assertEquals(Score.Significance.LIKELY_NOTABLE.getId(), analysisResultAdded1.getAnalysisResult().getScore().getSignificance().getId());
@@ -193,11 +193,11 @@ public class ArtifactTest {
 		assertTrue(analysisResultAdded1.getAnalysisResult().getConclusion().equalsIgnoreCase("Keyword hit found"));
 		
 		// Add a 2nd analysis result to the same file
-		AnalysisResultAdded analysisResultAdded2 = abcTextFile.newAnalysisResult(new BlackboardArtifact.Type(BlackboardArtifact.Type.TSK_INTERESTING_FILE_HIT), 
+		AnalysisResultAdded analysisResultAdded2 = abcTextFile.newAnalysisResult(BlackboardArtifact.Type.TSK_INTERESTING_FILE_HIT, 
 																	new Score(Score.Significance.LIKELY_NOTABLE, Score.MethodCategory.AUTO), "Thats a rather intersting file.", "", "", Collections.emptyList());
    
 		// Add a 3rd analysis result to the same file 
-		AnalysisResultAdded analysisResultAdded3 = abcTextFile.newAnalysisResult(new BlackboardArtifact.Type(BlackboardArtifact.Type.TSK_ENCRYPTION_DETECTED), 
+		AnalysisResultAdded analysisResultAdded3 = abcTextFile.newAnalysisResult(BlackboardArtifact.Type.TSK_ENCRYPTION_DETECTED, 
 																	new Score(Score.Significance.NOTABLE, Score.MethodCategory.AUTO), "Highly scrambled text!!", "", "", Collections.emptyList());
 		// get analysis results and verify count
 		
@@ -224,10 +224,10 @@ public class ArtifactTest {
 		
 		// Test Analysis Results in a Transaction
 		SleuthkitCase.CaseDbTransaction transAr = caseDB.beginTransaction();
-		AnalysisResultAdded analysisResultAdded4 = caseDB.getBlackboard().newAnalysisResult(new BlackboardArtifact.Type(BlackboardArtifact.Type.TSK_INTERESTING_FILE_HIT), 
+		AnalysisResultAdded analysisResultAdded4 = caseDB.getBlackboard().newAnalysisResult(BlackboardArtifact.Type.TSK_INTERESTING_FILE_HIT, 
 																	abcTextFile.getId(), abcTextFile.getDataSourceObjectId(), new Score(Score.Significance.LIKELY_NOTABLE, Score.MethodCategory.AUTO), "Thats a rather intersting file.", "", "", Collections.emptyList(), transAr);
 		
-		AnalysisResultAdded analysisResultAdded5 = caseDB.getBlackboard().newAnalysisResult(new BlackboardArtifact.Type(BlackboardArtifact.Type.TSK_INTERESTING_FILE_HIT), 
+		AnalysisResultAdded analysisResultAdded5 = caseDB.getBlackboard().newAnalysisResult(BlackboardArtifact.Type.TSK_INTERESTING_FILE_HIT, 
 																	abcTextFile.getId(), abcTextFile.getDataSourceObjectId(), new Score(Score.Significance.LIKELY_NONE, Score.MethodCategory.USER_DEFINED), "Thats a rather intersting file.", "", "", Collections.emptyList(), transAr);
 
 		transAr.commit();
@@ -242,7 +242,7 @@ public class ArtifactTest {
 		
 		
 		// Test: add a new data artifact to the file
-		DataArtifact dataArtifact1 = abcTextFile.newDataArtifact(new BlackboardArtifact.Type(BlackboardArtifact.Type.TSK_GPS_SEARCH), Collections.emptyList(), osAccount1);
+		DataArtifact dataArtifact1 = abcTextFile.newDataArtifact(BlackboardArtifact.Type.TSK_GPS_SEARCH, Collections.emptyList(), osAccount1);
         
 		OsAccountManager osAcctMgr = caseDB.getOsAccountManager();
 		
@@ -251,14 +251,14 @@ public class ArtifactTest {
 		
 		
 		// Test: add a second data artifact to file - associate it with a different account
-		DataArtifact dataArtifact2 = abcTextFile.newDataArtifact(new BlackboardArtifact.Type(BlackboardArtifact.Type.TSK_CLIPBOARD_CONTENT), Collections.emptyList(), osAccount2);
+		DataArtifact dataArtifact2 = abcTextFile.newDataArtifact(BlackboardArtifact.Type.TSK_CLIPBOARD_CONTENT, Collections.emptyList(), osAccount2);
 		assertTrue(dataArtifact2.getOsAccountObjectId().isPresent());
 		assertTrue(osAcctMgr.getOsAccountByObjectId(dataArtifact2.getOsAccountObjectId().get()).getAddr().orElse("").equalsIgnoreCase(ownerUid2));
 				
 				
 		// and two more 
-		DataArtifact dataArtifact3 = abcTextFile.newDataArtifact(new BlackboardArtifact.Type(BlackboardArtifact.Type.TSK_GPS_AREA), Collections.emptyList(), osAccount2);
-		DataArtifact dataArtifact4 = abcTextFile.newDataArtifact(new BlackboardArtifact.Type(BlackboardArtifact.Type.TSK_GPS_AREA), Collections.emptyList(), osAccount2);
+		DataArtifact dataArtifact3 = abcTextFile.newDataArtifact(BlackboardArtifact.Type.TSK_GPS_AREA, Collections.emptyList(), osAccount2);
+		DataArtifact dataArtifact4 = abcTextFile.newDataArtifact(BlackboardArtifact.Type.TSK_GPS_AREA, Collections.emptyList(), osAccount2);
 
 		
 		// TEST: get all TSK_GPS_SEARCH data artifacts in the data source

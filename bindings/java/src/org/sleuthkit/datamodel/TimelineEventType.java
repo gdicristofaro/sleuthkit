@@ -260,42 +260,42 @@ public interface TimelineEventType extends Comparable<TimelineEventType> {
 	TimelineEventType WEB_DOWNLOADS = new URLArtifactEventType(8,
 			getBundle().getString("WebTypes.webDownloads.name"), // NON-NLS
 			WEB_ACTIVITY,
-			new BlackboardArtifact.Type(TSK_WEB_DOWNLOAD),
+			TSK_WEB_DOWNLOAD,
 			new Type(TSK_DATETIME_ACCESSED),
 			new Type(TSK_URL));
 
 	TimelineEventType WEB_COOKIE = new URLArtifactEventType(9,
 			getBundle().getString("WebTypes.webCookies.name"),// NON-NLS
 			WEB_ACTIVITY,
-			new BlackboardArtifact.Type(TSK_WEB_COOKIE),
+			TSK_WEB_COOKIE,
 			new Type(TSK_DATETIME_CREATED),
 			new Type(TSK_URL));
 
 	TimelineEventType WEB_BOOKMARK = new URLArtifactEventType(10,
 			getBundle().getString("WebTypes.webBookmarks.name"), // NON-NLS
 			WEB_ACTIVITY,
-			new BlackboardArtifact.Type(TSK_WEB_BOOKMARK),
+			TSK_WEB_BOOKMARK,
 			new Type(TSK_DATETIME_CREATED),
 			new Type(TSK_URL));
 
 	TimelineEventType WEB_HISTORY = new URLArtifactEventType(11,
 			getBundle().getString("WebTypes.webHistory.name"), // NON-NLS
 			WEB_ACTIVITY,
-			new BlackboardArtifact.Type(TSK_WEB_HISTORY),
+			TSK_WEB_HISTORY,
 			new Type(TSK_DATETIME_ACCESSED),
 			new Type(TSK_URL));
 
 	TimelineEventType WEB_SEARCH = new URLArtifactEventType(12,
 			getBundle().getString("WebTypes.webSearch.name"), // NON-NLS
 			WEB_ACTIVITY,
-			new BlackboardArtifact.Type(TSK_WEB_SEARCH_QUERY),
+			TSK_WEB_SEARCH_QUERY,
 			new Type(TSK_DATETIME_ACCESSED),
 			new Type(TSK_DOMAIN));
 
 	TimelineEventType MESSAGE = new TimelineEventArtifactTypeImpl(13,
 			getBundle().getString("MiscTypes.message.name"),// NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_MESSAGE),
+			TSK_MESSAGE,
 			new Type(TSK_DATETIME),
 			new TimelineEventArtifactTypeImpl.AttributeExtractor(new Type(TSK_MESSAGE_TYPE)),
 			artf -> {
@@ -327,7 +327,7 @@ public interface TimelineEventType extends Comparable<TimelineEventType> {
 	TimelineEventType GPS_ROUTE = new TimelineEventArtifactTypeImpl(14,
 			getBundle().getString("MiscTypes.GPSRoutes.name"), // NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_GPS_ROUTE),
+			TSK_GPS_ROUTE,
 			new Type(TSK_DATETIME),
 			new AttributeExtractor(new Type(TSK_PROG_NAME)),
 			new AttributeExtractor(new Type(TSK_LOCATION)),
@@ -343,7 +343,7 @@ public interface TimelineEventType extends Comparable<TimelineEventType> {
 	TimelineEventType GPS_TRACKPOINT = new TimelineEventArtifactTypeImpl(15,
 			getBundle().getString("MiscTypes.GPSTrackpoint.name"), // NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_GPS_TRACKPOINT),
+			new BlackboardArtifact.Type(BlackboardArtifact.ARTIFACT_TYPE.TSK_GPS_TRACKPOINT),
 			new Type(TSK_DATETIME),
 			new AttributeExtractor(new Type(TSK_PROG_NAME)),
 			artf -> {
@@ -356,7 +356,7 @@ public interface TimelineEventType extends Comparable<TimelineEventType> {
 	TimelineEventType CALL_LOG = new TimelineEventArtifactTypeImpl(16,
 			getBundle().getString("MiscTypes.Calls.name"), // NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_CALLLOG),
+			TSK_CALLLOG,
 			new Type(TSK_DATETIME_START),
 			new AttributeExtractor(new Type(TSK_NAME)),
 			artf -> {
@@ -375,7 +375,7 @@ public interface TimelineEventType extends Comparable<TimelineEventType> {
 	TimelineEventType EMAIL = new TimelineEventArtifactTypeImpl(17,
 			getBundle().getString("MiscTypes.Email.name"), // NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_EMAIL_MSG),
+			TSK_EMAIL_MSG,
 			new Type(TSK_DATETIME_SENT),
 			artf -> {
 				String emailFrom = stringValueOf(getAttributeSafe(artf, new Type(TSK_EMAIL_FROM)));
@@ -401,14 +401,14 @@ public interface TimelineEventType extends Comparable<TimelineEventType> {
 	TimelineEventType RECENT_DOCUMENTS = new FilePathArtifactEventType(18,
 			getBundle().getString("MiscTypes.recentDocuments.name"), // NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_RECENT_OBJECT),
+			TSK_RECENT_OBJECT,
 			new Type(TSK_DATETIME_ACCESSED),
 			new Type(TSK_PATH));
 
 	TimelineEventType INSTALLED_PROGRAM = new TimelineEventArtifactTypeImpl(19,
 			getBundle().getString("MiscTypes.installedPrograms.name"), // NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_INSTALLED_PROG),
+			TSK_INSTALLED_PROG,
 			new Type(TSK_DATETIME),
 			new AttributeExtractor(new Type(TSK_PROG_NAME)),
 			new EmptyExtractor(),
@@ -417,7 +417,7 @@ public interface TimelineEventType extends Comparable<TimelineEventType> {
 	TimelineEventType EXIF = new TimelineEventArtifactTypeImpl(20,
 			getBundle().getString("MiscTypes.exif.name"), // NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_METADATA_EXIF),
+			TSK_METADATA_EXIF,
 			new Type(TSK_DATETIME_CREATED),
 			new AttributeExtractor(new Type(TSK_DEVICE_MAKE)),
 			new AttributeExtractor(new Type(TSK_DEVICE_MODEL)),
@@ -427,7 +427,7 @@ public interface TimelineEventType extends Comparable<TimelineEventType> {
 	TimelineEventType DEVICES_ATTACHED = new TimelineEventArtifactTypeImpl(21,
 			getBundle().getString("MiscTypes.devicesAttached.name"), // NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_DEVICE_ATTACHED),
+			TSK_DEVICE_ATTACHED,
 			new Type(TSK_DATETIME),
 			new AttributeExtractor(new Type(TSK_DEVICE_MAKE)),
 			new AttributeExtractor(new Type(TSK_DEVICE_MODEL)),
@@ -447,7 +447,7 @@ public interface TimelineEventType extends Comparable<TimelineEventType> {
 	TimelineEventType OTHER = new TimelineEventArtifactTypeSingleDescription(23,
 			getBundle().getString("CustomTypes.other.name"), //NON-NLS
 			CUSTOM_TYPES,
-			new BlackboardArtifact.Type(TSK_TL_EVENT),
+			TSK_TL_EVENT,
 			new BlackboardAttribute.Type(TSK_DATETIME),
 			new BlackboardAttribute.Type(TSK_DESCRIPTION));
 
@@ -455,14 +455,14 @@ public interface TimelineEventType extends Comparable<TimelineEventType> {
 	TimelineEventType LOG_ENTRY = new TimelineEventArtifactTypeSingleDescription(24,
 			getBundle().getString("MiscTypes.LogEntry.name"), //NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_TL_EVENT),
+			TSK_TL_EVENT,
 			new BlackboardAttribute.Type(TSK_DATETIME),
 			new BlackboardAttribute.Type(TSK_DESCRIPTION));
 
 	TimelineEventType REGISTRY = new TimelineEventArtifactTypeSingleDescription(25,
 			getBundle().getString("MiscTypes.Registry.name"), //NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_TL_EVENT),
+			TSK_TL_EVENT,
 			new BlackboardAttribute.Type(TSK_DATETIME),
 			new BlackboardAttribute.Type(TSK_DESCRIPTION));
 
@@ -470,14 +470,14 @@ public interface TimelineEventType extends Comparable<TimelineEventType> {
 	TimelineEventType USER_CREATED = new TimelineEventArtifactTypeSingleDescription(26,
 			getBundle().getString("CustomTypes.userCreated.name"),//NON-NLS
 			CUSTOM_TYPES,
-			new BlackboardArtifact.Type(TSK_TL_EVENT),
+			TSK_TL_EVENT,
 			new BlackboardAttribute.Type(TSK_DATETIME),
 			new BlackboardAttribute.Type(TSK_DESCRIPTION));
 
 	TimelineEventType WEB_FORM_AUTOFILL = new TimelineEventArtifactTypeImpl(27,
 			getBundle().getString("WebTypes.webFormAutoFill.name"),//NON-NLS
 			WEB_ACTIVITY,
-			new BlackboardArtifact.Type(TSK_WEB_FORM_AUTOFILL),
+			TSK_WEB_FORM_AUTOFILL,
 			new Type(TSK_DATETIME_CREATED),
 			artf -> {
 				final BlackboardAttribute name = getAttributeSafe(artf, new Type(TSK_NAME));
@@ -489,14 +489,14 @@ public interface TimelineEventType extends Comparable<TimelineEventType> {
 	TimelineEventType WEB_FORM_ADDRESSES = new URLArtifactEventType(28,
 			getBundle().getString("WebTypes.webFormAddress.name"),//NON-NLS
 			WEB_ACTIVITY,
-			new BlackboardArtifact.Type(TSK_WEB_FORM_ADDRESS),
+			TSK_WEB_FORM_ADDRESS,
 			new Type(TSK_DATETIME_ACCESSED),
 			new Type(TSK_EMAIL));
 
 	TimelineEventType GPS_BOOKMARK = new TimelineEventArtifactTypeImpl(29,
 			getBundle().getString("MiscTypes.GPSBookmark.name"), // NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_GPS_BOOKMARK),
+			TSK_GPS_BOOKMARK,
 			new Type(TSK_DATETIME),
 			new AttributeExtractor(new Type(TSK_NAME)),
 			artf -> {
@@ -509,7 +509,7 @@ public interface TimelineEventType extends Comparable<TimelineEventType> {
 	TimelineEventType GPS_LAST_KNOWN_LOCATION = new TimelineEventArtifactTypeImpl(30,
 			getBundle().getString("MiscTypes.GPSLastknown.name"), // NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_GPS_LAST_KNOWN_LOCATION),
+			TSK_GPS_LAST_KNOWN_LOCATION,
 			new Type(TSK_DATETIME),
 			new AttributeExtractor(new Type(TSK_NAME)),
 			artf -> {
@@ -522,7 +522,7 @@ public interface TimelineEventType extends Comparable<TimelineEventType> {
 	TimelineEventType GPS_SEARCH = new TimelineEventArtifactTypeImpl(31,
 			getBundle().getString("MiscTypes.GPSearch.name"), // NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_GPS_SEARCH),
+			TSK_GPS_SEARCH,
 			new Type(TSK_DATETIME),
 			new AttributeExtractor(new Type(TSK_NAME)),
 			artf -> {
@@ -535,13 +535,13 @@ public interface TimelineEventType extends Comparable<TimelineEventType> {
 	TimelineEventType GPS_TRACK = new GPSTrackArtifactEventType(32,
 			getBundle().getString("MiscTypes.GPSTrack.name"), // NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_GPS_TRACK),
+			TSK_GPS_TRACK,
 			new Type(TSK_NAME));
 
 	TimelineEventType METADATA_LAST_PRINTED = new TimelineEventArtifactTypeImpl(33,
 			getBundle().getString("MiscTypes.metadataLastPrinted.name"),// NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_METADATA),
+			TSK_METADATA,
 			new BlackboardAttribute.Type(TSK_LAST_PRINTED_DATETIME),
 			artf -> {
 				return getBundle().getString("MiscTypes.metadataLastPrinted.name");
@@ -552,7 +552,7 @@ public interface TimelineEventType extends Comparable<TimelineEventType> {
 	TimelineEventType METADATA_LAST_SAVED = new TimelineEventArtifactTypeImpl(34,
 			getBundle().getString("MiscTypes.metadataLastSaved.name"),// NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_METADATA),
+			TSK_METADATA,
 			new BlackboardAttribute.Type(TSK_DATETIME_MODIFIED),
 			artf -> {
 				return getBundle().getString("MiscTypes.metadataLastSaved.name");
@@ -563,7 +563,7 @@ public interface TimelineEventType extends Comparable<TimelineEventType> {
 	TimelineEventType METADATA_CREATED = new TimelineEventArtifactTypeImpl(35,
 			getBundle().getString("MiscTypes.metadataCreated.name"),// NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_METADATA),
+			TSK_METADATA,
 			new BlackboardAttribute.Type(TSK_DATETIME_CREATED),
 			artf -> {
 				return getBundle().getString("MiscTypes.metadataCreated.name");
@@ -574,7 +574,7 @@ public interface TimelineEventType extends Comparable<TimelineEventType> {
 	TimelineEventType PROGRAM_EXECUTION = new TimelineEventArtifactTypeImpl(36,
 			getBundle().getString("MiscTypes.programexecuted.name"),// NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_PROG_RUN),
+			TSK_PROG_RUN,
 			new Type(TSK_DATETIME),
 			new AttributeExtractor(new Type(TSK_PROG_NAME)),
 			artf -> {
@@ -589,7 +589,7 @@ public interface TimelineEventType extends Comparable<TimelineEventType> {
 	TimelineEventType WEB_FORM_AUTOFILL_ACCESSED = new TimelineEventArtifactTypeImpl(37,
 			getBundle().getString("WebTypes.webFormAutofillAccessed.name"),
 			WEB_ACTIVITY,
-			new BlackboardArtifact.Type(TSK_WEB_FORM_AUTOFILL),
+			TSK_WEB_FORM_AUTOFILL,
 			new Type(TSK_DATETIME_ACCESSED),
 			artf -> {
 				final BlackboardAttribute name = getAttributeSafe(artf, new Type(TSK_NAME));
@@ -601,7 +601,7 @@ public interface TimelineEventType extends Comparable<TimelineEventType> {
 	TimelineEventType CALL_LOG_END = new TimelineEventArtifactTypeImpl(38,
 			getBundle().getString("MiscTypes.CallsEnd.name"), // NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_CALLLOG),
+			TSK_CALLLOG,
 			new Type(TSK_DATETIME_END),
 			new AttributeExtractor(new Type(TSK_NAME)),
 			artf -> {
@@ -620,7 +620,7 @@ public interface TimelineEventType extends Comparable<TimelineEventType> {
 	TimelineEventType EMAIL_RCVD = new TimelineEventArtifactTypeImpl(39,
 			getBundle().getString("MiscTypes.EmailRcvd.name"), // NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_EMAIL_MSG),
+			TSK_EMAIL_MSG,
 			new Type(TSK_DATETIME_RCVD),
 			artf -> {
 				String emailFrom = stringValueOf(getAttributeSafe(artf, new Type(TSK_EMAIL_FROM)));
@@ -646,28 +646,28 @@ public interface TimelineEventType extends Comparable<TimelineEventType> {
 	TimelineEventType WEB_FORM_ADDRESSES_MODIFIED = new URLArtifactEventType(40,
 			getBundle().getString("WebTypes.webFormAddressModified.name"),//NON-NLS
 			WEB_ACTIVITY,
-			new BlackboardArtifact.Type(TSK_WEB_FORM_ADDRESS),
+			TSK_WEB_FORM_ADDRESS,
 			new Type(TSK_DATETIME_MODIFIED),
 			new Type(TSK_EMAIL));
 
 	TimelineEventType WEB_COOKIE_ACCESSED = new URLArtifactEventType(41,
 			getBundle().getString("WebTypes.webCookiesAccessed.name"),// NON-NLS
 			WEB_ACTIVITY,
-			new BlackboardArtifact.Type(TSK_WEB_COOKIE),
+			TSK_WEB_COOKIE,
 			new Type(TSK_DATETIME_ACCESSED),
 			new Type(TSK_URL));
 
 	TimelineEventType WEB_COOKIE_END = new URLArtifactEventType(42,
 			getBundle().getString("WebTypes.webCookiesEnd.name"),// NON-NLS
 			WEB_ACTIVITY,
-			new BlackboardArtifact.Type(TSK_WEB_COOKIE),
+			TSK_WEB_COOKIE,
 			new Type(TSK_DATETIME_END),
 			new Type(TSK_URL));
 	
 	TimelineEventType BACKUP_EVENT_START = new TimelineEventArtifactTypeImpl(43,
 			getBundle().getString("TimelineEventType.BackupEventStart.txt"),// NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_BACKUP_EVENT),
+			TSK_BACKUP_EVENT,
 			new BlackboardAttribute.Type(TSK_DATETIME_START),
 			artf -> {
 				return getBundle().getString("TimelineEventType.BackupEvent.description.start");
@@ -678,7 +678,7 @@ public interface TimelineEventType extends Comparable<TimelineEventType> {
 	TimelineEventType BACKUP_EVENT_END = new TimelineEventArtifactTypeImpl(44,
 			getBundle().getString("TimelineEventType.BackupEventEnd.txt"),// NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_BACKUP_EVENT),
+			TSK_BACKUP_EVENT,
 			new BlackboardAttribute.Type(TSK_DATETIME_END),
 			artf -> {
 				return getBundle().getString("TimelineEventType.BackupEvent.description.end");
@@ -689,56 +689,56 @@ public interface TimelineEventType extends Comparable<TimelineEventType> {
 	TimelineEventType BLUETOOTH_PAIRING = new TimelineEventArtifactTypeSingleDescription(45,
 			getBundle().getString("TimelineEventType.BluetoothPairing.txt"),//NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_BLUETOOTH_PAIRING),
+			TSK_BLUETOOTH_PAIRING,
 			new BlackboardAttribute.Type(TSK_DATETIME),
 			new BlackboardAttribute.Type(TSK_DEVICE_NAME));
 	
 	TimelineEventType CALENDAR_ENTRY_START = new TimelineEventArtifactTypeSingleDescription(46,
 			getBundle().getString("TimelineEventType.CalendarEntryStart.txt"),//NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_CALENDAR_ENTRY),
+			TSK_CALENDAR_ENTRY,
 			new BlackboardAttribute.Type(TSK_DATETIME_START),
 			new BlackboardAttribute.Type(TSK_DESCRIPTION));
 	
 	TimelineEventType CALENDAR_ENTRY_END = new TimelineEventArtifactTypeSingleDescription(47,
 			getBundle().getString("TimelineEventType.CalendarEntryEnd.txt"),//NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_CALENDAR_ENTRY),
+			TSK_CALENDAR_ENTRY,
 			new BlackboardAttribute.Type(TSK_DATETIME_END),
 			new BlackboardAttribute.Type(TSK_DESCRIPTION));
 	
 	TimelineEventType PROGRAM_DELETED = new TimelineEventArtifactTypeSingleDescription(48,
 			getBundle().getString("TimelineEventType.DeletedProgram.txt"),//NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_DELETED_PROG),
+			TSK_DELETED_PROG,
 			new BlackboardAttribute.Type(TSK_DATETIME),
 			new BlackboardAttribute.Type(TSK_PROG_NAME));	
 	
 	TimelineEventType OS_INFO = new TimelineEventArtifactTypeSingleDescription(49,
 			getBundle().getString("TimelineEventType.OSInfo.txt"),//NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_OS_INFO),
+			TSK_OS_INFO,
 			new BlackboardAttribute.Type(TSK_DATETIME),
 			new BlackboardAttribute.Type(TSK_PROG_NAME));
 
 	TimelineEventType PROGRAM_NOTIFICATION = new TimelineEventArtifactTypeSingleDescription(50,
 			getBundle().getString("TimelineEventType.ProgramNotification.txt"),//NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_PROG_NOTIFICATIONS),
+			TSK_PROG_NOTIFICATIONS,
 			new BlackboardAttribute.Type(TSK_DATETIME),
 			new BlackboardAttribute.Type(TSK_PROG_NAME));
 	
 	TimelineEventType SCREEN_SHOT = new TimelineEventArtifactTypeSingleDescription(51,
 			getBundle().getString("TimelineEventType.ScreenShot.txt"),//NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_SCREEN_SHOTS),
+			TSK_SCREEN_SHOTS,
 			new BlackboardAttribute.Type(TSK_DATETIME),
 			new BlackboardAttribute.Type(TSK_PROG_NAME));
 		
 	TimelineEventType SERVICE_ACCOUNT = new TimelineEventArtifactTypeImpl(52,
 			getBundle().getString("TimelineEventType.ServiceAccount.txt"),// NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_SERVICE_ACCOUNT),
+			TSK_SERVICE_ACCOUNT,
 			new BlackboardAttribute.Type(TSK_DATETIME_CREATED),
 			artf -> {
 				String progName = stringValueOf(getAttributeSafe(artf, new Type(TSK_PROG_NAME)));
@@ -751,7 +751,7 @@ public interface TimelineEventType extends Comparable<TimelineEventType> {
 	TimelineEventType USER_DEVICE_EVENT_START = new TimelineEventArtifactTypeImpl(53,
 			getBundle().getString("TimelineEventType.UserDeviceEventStart.txt"),// NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_USER_DEVICE_EVENT),
+			TSK_USER_DEVICE_EVENT,
 			new BlackboardAttribute.Type(TSK_DATETIME_START),
 			artf -> {
 				String progName = stringValueOf(getAttributeSafe(artf, new Type(TSK_PROG_NAME)));
@@ -765,7 +765,7 @@ public interface TimelineEventType extends Comparable<TimelineEventType> {
 	TimelineEventType USER_DEVICE_EVENT_END = new TimelineEventArtifactTypeImpl(54,
 			getBundle().getString("TimelineEventType.UserDeviceEventEnd.txt"),// NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_USER_DEVICE_EVENT),
+			TSK_USER_DEVICE_EVENT,
 			new BlackboardAttribute.Type(TSK_DATETIME_END),
 			artf -> {
 				String progName = stringValueOf(getAttributeSafe(artf, new Type(TSK_PROG_NAME)));
@@ -779,35 +779,35 @@ public interface TimelineEventType extends Comparable<TimelineEventType> {
 	TimelineEventType WEB_CACHE = new URLArtifactEventType(55,
 			getBundle().getString("TimelineEventType.WebCache.text"),// NON-NLS
 			WEB_ACTIVITY,
-			new BlackboardArtifact.Type(TSK_WEB_CACHE),
+			TSK_WEB_CACHE,
 			new Type(TSK_DATETIME_CREATED),
 			new Type(TSK_URL));
 	
 	TimelineEventType WIFI_NETWORK = new TimelineEventArtifactTypeSingleDescription(56,
 			getBundle().getString("TimelineEventType.WIFINetwork.txt"),//NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_WIFI_NETWORK),
+			TSK_WIFI_NETWORK,
 			new BlackboardAttribute.Type(TSK_DATETIME),
 			new BlackboardAttribute.Type(TSK_SSID));
 	
 	TimelineEventType WEB_HISTORY_CREATED = new URLArtifactEventType(57,
 			getBundle().getString("WebTypes.webHistoryCreated.name"),// NON-NLS
 			WEB_ACTIVITY,
-			new BlackboardArtifact.Type(TSK_WEB_HISTORY),
+			TSK_WEB_HISTORY,
 			new Type(TSK_DATETIME_CREATED),
 			new Type(TSK_URL));
 	
 	TimelineEventType BLUETOOTH_ADAPTER = new TimelineEventArtifactTypeSingleDescription(58,
 			getBundle().getString("TimelineEventType.BluetoothAdapter.txt"),//NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_BLUETOOTH_ADAPTER),
+			TSK_BLUETOOTH_ADAPTER,
 			new BlackboardAttribute.Type(TSK_DATETIME),
 			new BlackboardAttribute.Type(TSK_NAME));
 	
 	TimelineEventType BLUETOOTH_PAIRING_ACCESSED = new TimelineEventArtifactTypeSingleDescription(59,
 			getBundle().getString("TimelineEventType.BluetoothPairingLastConnection.txt"),//NON-NLS
 			MISC_TYPES,
-			new BlackboardArtifact.Type(TSK_BLUETOOTH_PAIRING),
+			TSK_BLUETOOTH_PAIRING,
 			new BlackboardAttribute.Type(TSK_DATETIME_ACCESSED),
 			new BlackboardAttribute.Type(TSK_DEVICE_NAME));
 

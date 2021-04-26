@@ -83,7 +83,7 @@ public final class ArtifactsHelper extends ArtifactHelperBase {
 		Collection<BlackboardAttribute> attributes = new ArrayList<>();
 
 		// create artifact
-		installedProgramArtifact = getContent().newArtifact(BlackboardArtifact.Type.TSK_INSTALLED_PROG);
+		installedProgramArtifact = getContent().newArtifact(BlackboardArtifact.Type.TSK_INSTALLED_PROG.getTypeID());
 
 		// construct attributes 
 		attributes.add(new BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_PROG_NAME, getModuleName(), programName));

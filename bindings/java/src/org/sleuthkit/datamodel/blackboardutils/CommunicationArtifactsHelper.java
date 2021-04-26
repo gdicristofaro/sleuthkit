@@ -276,7 +276,7 @@ public final class CommunicationArtifactsHelper extends ArtifactHelperBase {
 		Collection<BlackboardAttribute> attributes = new ArrayList<>();
 
 		// create TSK_CONTACT artifact
-		contactArtifact = getContent().newArtifact(BlackboardArtifact.Type.TSK_CONTACT);
+		contactArtifact = getContent().newArtifact(BlackboardArtifact.Type.TSK_CONTACT.getTypeID());
 
 		// construct attributes
 		addAttributeIfNotNull(ATTRIBUTE_TYPE.TSK_NAME, contactName, attributes);
@@ -506,7 +506,7 @@ public final class CommunicationArtifactsHelper extends ArtifactHelperBase {
 		Collection<BlackboardAttribute> attributes = new ArrayList<>();
 
 		// create TSK_MESSAGE artifact
-		msgArtifact = getContent().newArtifact(BlackboardArtifact.Type.TSK_MESSAGE);
+		msgArtifact = getContent().newArtifact(BlackboardArtifact.Type.TSK_MESSAGE.getTypeID());
 
 		// construct attributes
 		attributes.add(new BlackboardAttribute(ATTRIBUTE_TYPE.TSK_MESSAGE_TYPE, getModuleName(), messageType));
@@ -768,7 +768,7 @@ public final class CommunicationArtifactsHelper extends ArtifactHelperBase {
 		Collection<BlackboardAttribute> attributes = new ArrayList<>();
 
 		// Create TSK_CALLLOG artifact
-		callLogArtifact = getContent().newArtifact(BlackboardArtifact.Type.TSK_CALLLOG);
+		callLogArtifact = getContent().newArtifact(BlackboardArtifact.Type.TSK_CALLLOG.getTypeID());
 
 		// Add basic attributes 
 		addAttributeIfNotZero(ATTRIBUTE_TYPE.TSK_DATETIME_START, startDateTime, attributes);
@@ -907,7 +907,7 @@ public final class CommunicationArtifactsHelper extends ArtifactHelperBase {
 		Collection<BlackboardAttribute> attributes = new ArrayList<>();
 		attributes.add(new BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_ASSOCIATED_ARTIFACT, this.getModuleName(), message.getArtifactID()));
 
-		BlackboardArtifact bba = attachedFile.newArtifact(BlackboardArtifact.Type.TSK_ASSOCIATED_OBJECT);
+		BlackboardArtifact bba = attachedFile.newArtifact(BlackboardArtifact.Type.TSK_ASSOCIATED_OBJECT.getTypeID());
 		bba.addAttributes(attributes); //write out to bb
 		return bba;
 	}
