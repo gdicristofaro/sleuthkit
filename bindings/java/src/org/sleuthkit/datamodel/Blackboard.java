@@ -808,7 +808,9 @@ public final class Blackboard {
 	 *
 	 * @throws TskCoreException If there is a problem getting artifacts or
 	 * attributes.
+	 * @deprecated Since 4.11.1 please use...TODO
 	 */
+	@Deprecated
 	public boolean artifactExists(Content content, BlackboardArtifact.ARTIFACT_TYPE artifactType,
 			Collection<BlackboardAttribute> attributesList) throws TskCoreException {
 

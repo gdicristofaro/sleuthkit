@@ -34,7 +34,7 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.sleuthkit.datamodel.BlackboardArtifact.ARTIFACT_TYPE;
+import org.sleuthkit.datamodel.BlackboardArtifact.Type;
 import org.sleuthkit.datamodel.BlackboardAttribute.ATTRIBUTE_TYPE;
 
 /**
@@ -95,63 +95,63 @@ public class TimelineEventTypesTest {
 	@Test
 	public void testArtifactAttributeEvents() {
 		// this was generated based off of the artifact_catalog.dox
-		Map<ARTIFACT_TYPE, Set<ATTRIBUTE_TYPE>> mapping = new HashMap<>();
-		mapping.put(ARTIFACT_TYPE.TSK_PROG_NOTIFICATIONS, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
-		mapping.put(ARTIFACT_TYPE.TSK_WEB_SEARCH_QUERY, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_ACCESSED));
-		mapping.put(ARTIFACT_TYPE.TSK_RECENT_OBJECT, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_ACCESSED));
-		mapping.put(ARTIFACT_TYPE.TSK_SCREEN_SHOTS, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
-		mapping.put(ARTIFACT_TYPE.TSK_BLUETOOTH_ADAPTER, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
-		mapping.put(ARTIFACT_TYPE.TSK_CALENDAR_ENTRY, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_END, ATTRIBUTE_TYPE.TSK_DATETIME_START));
-		mapping.put(ARTIFACT_TYPE.TSK_DEVICE_ATTACHED, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
-		mapping.put(ARTIFACT_TYPE.TSK_SERVICE_ACCOUNT, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_CREATED));
-		mapping.put(ARTIFACT_TYPE.TSK_DELETED_PROG, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
-		mapping.put(ARTIFACT_TYPE.TSK_GPS_LAST_KNOWN_LOCATION, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
-		mapping.put(ARTIFACT_TYPE.TSK_USER_DEVICE_EVENT, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_END, ATTRIBUTE_TYPE.TSK_DATETIME_START));
-		mapping.put(ARTIFACT_TYPE.TSK_WEB_HISTORY, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_ACCESSED, ATTRIBUTE_TYPE.TSK_DATETIME_CREATED));
-		mapping.put(ARTIFACT_TYPE.TSK_OS_INFO, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
-		mapping.put(ARTIFACT_TYPE.TSK_GPS_ROUTE, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
-		mapping.put(ARTIFACT_TYPE.TSK_MESSAGE, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
-		mapping.put(ARTIFACT_TYPE.TSK_GPS_BOOKMARK, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
-		mapping.put(ARTIFACT_TYPE.TSK_GPS_SEARCH, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
-		mapping.put(ARTIFACT_TYPE.TSK_WEB_FORM_AUTOFILL, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_ACCESSED, ATTRIBUTE_TYPE.TSK_DATETIME_CREATED));
-		mapping.put(ARTIFACT_TYPE.TSK_WEB_CACHE, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_CREATED));
-		mapping.put(ARTIFACT_TYPE.TSK_WIFI_NETWORK, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
-		mapping.put(ARTIFACT_TYPE.TSK_WEB_FORM_ADDRESS, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_ACCESSED, ATTRIBUTE_TYPE.TSK_DATETIME_MODIFIED));
-		mapping.put(ARTIFACT_TYPE.TSK_METADATA_EXIF, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_CREATED));
-		mapping.put(ARTIFACT_TYPE.TSK_WEB_COOKIE, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_ACCESSED, ATTRIBUTE_TYPE.TSK_DATETIME_CREATED, ATTRIBUTE_TYPE.TSK_DATETIME_END));
-		mapping.put(ARTIFACT_TYPE.TSK_WEB_DOWNLOAD, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_ACCESSED));
-		mapping.put(ARTIFACT_TYPE.TSK_TL_EVENT, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
-		mapping.put(ARTIFACT_TYPE.TSK_METADATA, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_CREATED, ATTRIBUTE_TYPE.TSK_DATETIME_MODIFIED, ATTRIBUTE_TYPE.TSK_LAST_PRINTED_DATETIME));
-		mapping.put(ARTIFACT_TYPE.TSK_WEB_BOOKMARK, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_CREATED));
-		mapping.put(ARTIFACT_TYPE.TSK_BLUETOOTH_PAIRING, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME, ATTRIBUTE_TYPE.TSK_DATETIME_ACCESSED));
-		mapping.put(ARTIFACT_TYPE.TSK_INSTALLED_PROG, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
-		mapping.put(ARTIFACT_TYPE.TSK_BACKUP_EVENT, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_END, ATTRIBUTE_TYPE.TSK_DATETIME_START));
-		mapping.put(ARTIFACT_TYPE.TSK_CALLLOG, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_END, ATTRIBUTE_TYPE.TSK_DATETIME_START));
-		mapping.put(ARTIFACT_TYPE.TSK_PROG_RUN, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
+		Map<BlackboardArtifact.Type, Set<ATTRIBUTE_TYPE>> mapping = new HashMap<>();
+		mapping.put(BlackboardArtifact.Type.TSK_PROG_NOTIFICATIONS, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
+		mapping.put(BlackboardArtifact.Type.TSK_WEB_SEARCH_QUERY, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_ACCESSED));
+		mapping.put(BlackboardArtifact.Type.TSK_RECENT_OBJECT, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_ACCESSED));
+		mapping.put(BlackboardArtifact.Type.TSK_SCREEN_SHOTS, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
+		mapping.put(BlackboardArtifact.Type.TSK_BLUETOOTH_ADAPTER, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
+		mapping.put(BlackboardArtifact.Type.TSK_CALENDAR_ENTRY, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_END, ATTRIBUTE_TYPE.TSK_DATETIME_START));
+		mapping.put(BlackboardArtifact.Type.TSK_DEVICE_ATTACHED, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
+		mapping.put(BlackboardArtifact.Type.TSK_SERVICE_ACCOUNT, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_CREATED));
+		mapping.put(BlackboardArtifact.Type.TSK_DELETED_PROG, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
+		mapping.put(BlackboardArtifact.Type.TSK_GPS_LAST_KNOWN_LOCATION, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
+		mapping.put(BlackboardArtifact.Type.TSK_USER_DEVICE_EVENT, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_END, ATTRIBUTE_TYPE.TSK_DATETIME_START));
+		mapping.put(BlackboardArtifact.Type.TSK_WEB_HISTORY, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_ACCESSED, ATTRIBUTE_TYPE.TSK_DATETIME_CREATED));
+		mapping.put(BlackboardArtifact.Type.TSK_OS_INFO, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
+		mapping.put(BlackboardArtifact.Type.TSK_GPS_ROUTE, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
+		mapping.put(BlackboardArtifact.Type.TSK_MESSAGE, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
+		mapping.put(BlackboardArtifact.Type.TSK_GPS_BOOKMARK, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
+		mapping.put(BlackboardArtifact.Type.TSK_GPS_SEARCH, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
+		mapping.put(BlackboardArtifact.Type.TSK_WEB_FORM_AUTOFILL, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_ACCESSED, ATTRIBUTE_TYPE.TSK_DATETIME_CREATED));
+		mapping.put(BlackboardArtifact.Type.TSK_WEB_CACHE, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_CREATED));
+		mapping.put(BlackboardArtifact.Type.TSK_WIFI_NETWORK, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
+		mapping.put(BlackboardArtifact.Type.TSK_WEB_FORM_ADDRESS, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_ACCESSED, ATTRIBUTE_TYPE.TSK_DATETIME_MODIFIED));
+		mapping.put(BlackboardArtifact.Type.TSK_METADATA_EXIF, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_CREATED));
+		mapping.put(BlackboardArtifact.Type.TSK_WEB_COOKIE, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_ACCESSED, ATTRIBUTE_TYPE.TSK_DATETIME_CREATED, ATTRIBUTE_TYPE.TSK_DATETIME_END));
+		mapping.put(BlackboardArtifact.Type.TSK_WEB_DOWNLOAD, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_ACCESSED));
+		mapping.put(BlackboardArtifact.Type.TSK_TL_EVENT, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
+		mapping.put(BlackboardArtifact.Type.TSK_METADATA, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_CREATED, ATTRIBUTE_TYPE.TSK_DATETIME_MODIFIED, ATTRIBUTE_TYPE.TSK_LAST_PRINTED_DATETIME));
+		mapping.put(BlackboardArtifact.Type.TSK_WEB_BOOKMARK, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_CREATED));
+		mapping.put(BlackboardArtifact.Type.TSK_BLUETOOTH_PAIRING, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME, ATTRIBUTE_TYPE.TSK_DATETIME_ACCESSED));
+		mapping.put(BlackboardArtifact.Type.TSK_INSTALLED_PROG, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
+		mapping.put(BlackboardArtifact.Type.TSK_BACKUP_EVENT, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_END, ATTRIBUTE_TYPE.TSK_DATETIME_START));
+		mapping.put(BlackboardArtifact.Type.TSK_CALLLOG, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_END, ATTRIBUTE_TYPE.TSK_DATETIME_START));
+		mapping.put(BlackboardArtifact.Type.TSK_PROG_RUN, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
 
-		Map<Integer, ARTIFACT_TYPE> artTypeIds = Stream.of(ARTIFACT_TYPE.values())
+		Map<Integer, BlackboardArtifact.Type> artTypeIds = BlackboardArtifact.Type.STANDARD_TYPES.stream()
 				.collect(Collectors.toMap((art) -> art.getTypeID(), (art) -> art));
 
 		Map<Integer, ATTRIBUTE_TYPE> attrTypeIds = Stream.of(ATTRIBUTE_TYPE.values())
 				.collect(Collectors.toMap((attr) -> attr.getTypeID(), (attr) -> attr));
 
-		Map<ARTIFACT_TYPE, Set<ATTRIBUTE_TYPE>> duplicates = new HashMap<>();
-		Map<ARTIFACT_TYPE, Set<ATTRIBUTE_TYPE>> timelineEventArtifacts = new HashMap<>();
+		Map<BlackboardArtifact.Type, Set<ATTRIBUTE_TYPE>> duplicates = new HashMap<>();
+		Map<BlackboardArtifact.Type, Set<ATTRIBUTE_TYPE>> timelineEventArtifacts = new HashMap<>();
 
 		getArtifactEvents().forEach((artEv) -> {
-			ARTIFACT_TYPE currArtType = artTypeIds.get(artEv.getArtifactTypeID());
+			BlackboardArtifact.Type currArtType = artTypeIds.get(artEv.getArtifactTypeID());
 			ATTRIBUTE_TYPE curAttrType = attrTypeIds.get(artEv.getDateTimeAttributeType().getTypeID());
 			if (currArtType != null && curAttrType != null) {
 				// if adding for this artifact's set of attributes results in duplicate
 				if (!timelineEventArtifacts.computeIfAbsent(currArtType, (artType) -> new HashSet<>()).add(curAttrType)
-						&& !currArtType.equals(ARTIFACT_TYPE.TSK_TL_EVENT)) {
+						&& !currArtType.equals(BlackboardArtifact.Type.TSK_TL_EVENT)) {
 					duplicates.computeIfAbsent(currArtType, (artType) -> new HashSet<>()).add(curAttrType);
 				}
 			}
 		});
 
-		Map<ARTIFACT_TYPE, Set<ATTRIBUTE_TYPE>> notRepresentedInTimeline = new HashMap<>();
-		for (Entry<ARTIFACT_TYPE, Set<ATTRIBUTE_TYPE>> e : mapping.entrySet()) {
+		Map<BlackboardArtifact.Type, Set<ATTRIBUTE_TYPE>> notRepresentedInTimeline = new HashMap<>();
+		for (Entry<BlackboardArtifact.Type, Set<ATTRIBUTE_TYPE>> e : mapping.entrySet()) {
 			Set<ATTRIBUTE_TYPE> bbAttrs = new HashSet<>(e.getValue());
 			Set<ATTRIBUTE_TYPE> timelineEvtAttrs = timelineEventArtifacts.get(e.getKey());
 			timelineEvtAttrs = timelineEvtAttrs == null ? Collections.emptySet() : timelineEvtAttrs;

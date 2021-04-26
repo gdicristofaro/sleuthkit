@@ -57,10 +57,10 @@ public final class CommunicationsManager {
 
 	// Artifact types that can represent a relationship between accounts. 
 	private static final Set<Integer> RELATIONSHIP_ARTIFACT_TYPE_IDS = new HashSet<Integer>(Arrays.asList(
-			BlackboardArtifact.ARTIFACT_TYPE.TSK_MESSAGE.getTypeID(),
-			BlackboardArtifact.ARTIFACT_TYPE.TSK_EMAIL_MSG.getTypeID(),
-			BlackboardArtifact.ARTIFACT_TYPE.TSK_CONTACT.getTypeID(),
-			BlackboardArtifact.ARTIFACT_TYPE.TSK_CALLLOG.getTypeID()
+			BlackboardArtifact.Type.TSK_MESSAGE.getTypeID(),
+			BlackboardArtifact.Type.TSK_EMAIL_MSG.getTypeID(),
+			BlackboardArtifact.Type.TSK_CONTACT.getTypeID(),
+			BlackboardArtifact.Type.TSK_CALLLOG.getTypeID()
 	));
 	private static final String RELATIONSHIP_ARTIFACT_TYPE_IDS_CSV_STR = StringUtils.buildCSVString(RELATIONSHIP_ARTIFACT_TYPE_IDS);
 
@@ -511,7 +511,7 @@ public final class CommunicationsManager {
 	private BlackboardArtifact getOrCreateAccountFileInstanceArtifact(Account.Type accountType, String accountUniqueID, String moduleName, Content sourceFile) throws TskCoreException {
 		BlackboardArtifact accountArtifact = getAccountFileInstanceArtifact(accountType, accountUniqueID, sourceFile);
 		if (accountArtifact == null) {
-			accountArtifact = db.newBlackboardArtifact(BlackboardArtifact.ARTIFACT_TYPE.TSK_ACCOUNT, sourceFile.getId());
+			accountArtifact = db.newBlackboardArtifact(BlackboardArtifact.Type.TSK_ACCOUNT, sourceFile.getId());
 			Collection<BlackboardAttribute> attributes = new ArrayList<>();
 			attributes.add(new BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_ACCOUNT_TYPE, moduleName, accountType.getTypeName()));
 			attributes.add(new BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_ID, moduleName, accountUniqueID));
@@ -560,7 +560,7 @@ public final class CommunicationsManager {
 					+ "		ON artifacts.artifact_id = attr_account_id.artifact_id"
 					+ "		AND attr_account_id.attribute_type_id = " + BlackboardAttribute.ATTRIBUTE_TYPE.TSK_ID.getTypeID()
 					+ "	    AND attr_account_id.value_text = '" + accountUniqueID + "'"
-					+ " WHERE artifacts.artifact_type_id = " + BlackboardArtifact.ARTIFACT_TYPE.TSK_ACCOUNT.getTypeID()
+					+ " WHERE artifacts.artifact_type_id = " + BlackboardArtifact.Type.TSK_ACCOUNT.getTypeID()
 					+ " AND attr_account_type.attribute_type_id = " + BlackboardAttribute.ATTRIBUTE_TYPE.TSK_ACCOUNT_TYPE.getTypeID()
 					+ " AND attr_account_type.value_text = '" + accountType.getTypeName() + "'"
 					+ " AND artifacts.obj_id = " + sourceFile.getId(); //NON-NLS
@@ -1231,7 +1231,7 @@ public final class CommunicationsManager {
 	public List<AccountFileInstance> getAccountFileInstances(Account account) throws TskCoreException {
 		List<AccountFileInstance> accountFileInstanceList = new ArrayList<>();
 
-		List<BlackboardArtifact> artifactList = getSleuthkitCase().getBlackboardArtifacts(BlackboardArtifact.ARTIFACT_TYPE.TSK_ACCOUNT, BlackboardAttribute.ATTRIBUTE_TYPE.TSK_ID, account.getTypeSpecificID());
+		List<BlackboardArtifact> artifactList = getSleuthkitCase().getBlackboardArtifacts(BlackboardArtifact.Type.TSK_ACCOUNT, BlackboardAttribute.ATTRIBUTE_TYPE.TSK_ID, account.getTypeSpecificID());
 
 		if (artifactList != null && !artifactList.isEmpty()) {
 			for (BlackboardArtifact artifact : artifactList) {

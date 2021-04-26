@@ -233,7 +233,7 @@ public class Report implements Content {
 
 	@Override
 	public BlackboardArtifact newArtifact(int artifactTypeID) throws TskCoreException {
-		if (artifactTypeID != BlackboardArtifact.ARTIFACT_TYPE.TSK_KEYWORD_HIT.getTypeID()) {
+		if (artifactTypeID != BlackboardArtifact.Type.TSK_KEYWORD_HIT.getTypeID()) {
 			throw new TskCoreException("Reports can only have keyword hit artifacts.");
 		}
 		return db.newBlackboardArtifact(artifactTypeID, objectId);
@@ -258,13 +258,14 @@ public class Report implements Content {
 	@Override
 	public DataArtifact newDataArtifact(BlackboardArtifact.Type artifactType, Collection<BlackboardAttribute> attributesList, OsAccount osAccount) throws TskCoreException {
 
-		if (artifactType.getTypeID() != BlackboardArtifact.ARTIFACT_TYPE.TSK_KEYWORD_HIT.getTypeID()) {
+		if (artifactType.getTypeID() != BlackboardArtifact.Type.TSK_KEYWORD_HIT.getTypeID()) {
 			throw new TskCoreException("Reports can only have keyword hit artifacts.");
 		}
 		
 		return db.getBlackboard().newDataArtifact(artifactType, objectId, this.getDataSource().getId(), attributesList, osAccount);
 	}
 	
+	@Deprecated
 	@Override
 	public BlackboardArtifact newArtifact(BlackboardArtifact.ARTIFACT_TYPE type) throws TskCoreException {
 		return newArtifact(type.getTypeID());
@@ -295,12 +296,13 @@ public class Report implements Content {
 
 	@Override
 	public ArrayList<BlackboardArtifact> getArtifacts(int artifactTypeID) throws TskCoreException {
-		if (artifactTypeID != BlackboardArtifact.ARTIFACT_TYPE.TSK_KEYWORD_HIT.getTypeID()) {
+		if (artifactTypeID != BlackboardArtifact.Type.TSK_KEYWORD_HIT.getTypeID()) {
 			throw new TskCoreException("Reports can only have keyword hit artifacts.");
 		}
 		return db.getBlackboardArtifacts(artifactTypeID, objectId);
 	}
 
+	@Deprecated
 	@Override
 	public ArrayList<BlackboardArtifact> getArtifacts(BlackboardArtifact.ARTIFACT_TYPE type) throws TskCoreException {
 		return getArtifacts(type.getTypeID());
@@ -338,12 +340,13 @@ public class Report implements Content {
 
 	@Override
 	public long getArtifactsCount(int artifactTypeID) throws TskCoreException {
-		if (artifactTypeID != BlackboardArtifact.ARTIFACT_TYPE.TSK_KEYWORD_HIT.getTypeID()) {
+		if (artifactTypeID != BlackboardArtifact.Type.TSK_KEYWORD_HIT.getTypeID()) {
 			throw new TskCoreException("Reports can only have keyword hit artifacts.");
 		}
 		return db.getBlackboardArtifactsCount(artifactTypeID, objectId);
 	}
 
+	@Deprecated
 	@Override
 	public long getArtifactsCount(BlackboardArtifact.ARTIFACT_TYPE type) throws TskCoreException {
 		return getArtifactsCount(type.getTypeID());

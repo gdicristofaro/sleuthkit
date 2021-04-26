@@ -592,7 +592,7 @@ public class SleuthkitCase {
 		acquireSingleUserCaseWriteLock();
 		try {
 			statement = connection.createStatement();
-			for (ARTIFACT_TYPE type : ARTIFACT_TYPE.values()) {
+			for (BlackboardArtifact.Type type : BlackboardArtifact.Type.STANDARD_TYPES.values()) {
 				try {
 					statement.execute("INSERT INTO blackboard_artifact_types (artifact_type_id, type_name, display_name, category_type) VALUES (" + type.getTypeID() + " , '" + type.getLabel() + "', '" + type.getDisplayName() + "' , " + type.getCategory().getID() + ")"); //NON-NLS
 				} catch (SQLException ex) {
@@ -608,7 +608,7 @@ public class SleuthkitCase {
 				this.typeNameToArtifactTypeMap.put(type.getLabel(), new BlackboardArtifact.Type(type));
 			}
 			if (dbType == DbType.POSTGRESQL) {
-				int newPrimaryKeyIndex = Collections.max(Arrays.asList(ARTIFACT_TYPE.values())).getTypeID() + 1;
+				int newPrimaryKeyIndex = Collections.max(Arrays.asList(BlackboardArtifact.Type.STANDARD_TYPES)).getTypeID() + 1;
 				statement.execute("ALTER SEQUENCE blackboard_artifact_types_artifact_type_id_seq RESTART WITH " + newPrimaryKeyIndex); //NON-NLS
 			}
 		} finally {
@@ -1187,7 +1187,7 @@ public class SleuthkitCase {
 				"FROM blackboard_artifacts INNER JOIN blackboard_attributes \n" +
 				"ON blackboard_artifacts.artifact_id = blackboard_attributes.artifact_id \n" +
 				"WHERE blackboard_artifacts.artifact_type_id = " +
-					BlackboardArtifact.ARTIFACT_TYPE.TSK_TAG_FILE.getTypeID() + 
+					BlackboardArtifact.Type.TSK_TAG_FILE.getTypeID() + 
 					" AND blackboard_attributes.attribute_type_id = " + BlackboardAttribute.ATTRIBUTE_TYPE.TSK_TAG_NAME.getTypeID() 
 					+ ") AS tagNames \n" +
 				"INNER JOIN \n" +
@@ -1197,7 +1197,7 @@ public class SleuthkitCase {
 				"ON tagNames.objId = fileData.objId2 \n" +
 				"LEFT JOIN \n" +
 				"(SELECT value_text AS comment, artifact_id AS tagArtifactId FROM blackboard_attributes WHERE attribute_type_id = " + 
-					BlackboardAttribute.ATTRIBUTE_TYPE.TSK_COMMENT.getTypeID() + ") AS tagComments \n" +
+					BlackboardAttribute.Type.TSK_COMMENT.getTypeID() + ") AS tagComments \n" +
 				"ON tagNames.artifactId = tagComments.tagArtifactId");
 
 			while (resultSet.next()) {
@@ -1236,7 +1236,7 @@ public class SleuthkitCase {
 				"FROM blackboard_artifacts INNER JOIN blackboard_attributes \n" +
 				"ON blackboard_artifacts.artifact_id = blackboard_attributes.artifact_id \n" +
 				"WHERE blackboard_artifacts.artifact_type_id = " +
-					BlackboardArtifact.ARTIFACT_TYPE.TSK_TAG_ARTIFACT.getTypeID() + 
+					BlackboardArtifact.Type.TSK_TAG_ARTIFACT.getTypeID() + 
 					" AND blackboard_attributes.attribute_type_id = " + BlackboardAttribute.ATTRIBUTE_TYPE.TSK_TAG_NAME.getTypeID() 
 					+ ") AS tagNames \n" +
 				"INNER JOIN \n" +
@@ -1277,12 +1277,12 @@ public class SleuthkitCase {
 			statement.execute(
 					"DELETE FROM blackboard_attributes WHERE artifact_id IN " //NON-NLS
 					+ "(SELECT artifact_id FROM blackboard_artifacts WHERE artifact_type_id = " //NON-NLS
-					+ ARTIFACT_TYPE.TSK_TAG_FILE.getTypeID()
-					+ " OR artifact_type_id = " + ARTIFACT_TYPE.TSK_TAG_ARTIFACT.getTypeID() + ");"); //NON-NLS
+					+ BlackboardArtifact.Type.TSK_TAG_FILE.getTypeID()
+					+ " OR artifact_type_id = " + BlackboardArtifact.Type.TSK_TAG_ARTIFACT.getTypeID() + ");"); //NON-NLS
 			statement.execute(
 					"DELETE FROM blackboard_artifacts WHERE artifact_type_id = " //NON-NLS
-					+ ARTIFACT_TYPE.TSK_TAG_FILE.getTypeID()
-					+ " OR artifact_type_id = " + ARTIFACT_TYPE.TSK_TAG_ARTIFACT.getTypeID() + ";"); //NON-NLS
+					+ BlackboardArtifact.Type.TSK_TAG_FILE.getTypeID()
+					+ " OR artifact_type_id = " + BlackboardArtifact.Type.TSK_TAG_ARTIFACT.getTypeID() + ";"); //NON-NLS
 
 			return new CaseDbSchemaVersionNumber(3, 0);
 		} finally {
@@ -2378,23 +2378,23 @@ public class SleuthkitCase {
 			// case the built-in types change in a later release.
 			statement.execute("ALTER TABLE blackboard_artifact_types ADD COLUMN category_type INTEGER DEFAULT 0");
 			String analysisTypeObjIdList = 
-				BlackboardArtifact.ARTIFACT_TYPE.TSK_KEYWORD_HIT.getTypeID() + ", " 
-				+ BlackboardArtifact.ARTIFACT_TYPE.TSK_HASHSET_HIT.getTypeID() + ", "
-				+ BlackboardArtifact.ARTIFACT_TYPE.TSK_INTERESTING_FILE_HIT.getTypeID() + ", "
-				+ BlackboardArtifact.ARTIFACT_TYPE.TSK_TAG_FILE.getTypeID() + ", "
-				+ BlackboardArtifact.ARTIFACT_TYPE.TSK_TAG_ARTIFACT.getTypeID() + ", "
-				+ BlackboardArtifact.ARTIFACT_TYPE.TSK_ENCRYPTION_DETECTED.getTypeID() + ", "
-				+ BlackboardArtifact.ARTIFACT_TYPE.TSK_EXT_MISMATCH_DETECTED.getTypeID() + ", "
-				+ BlackboardArtifact.ARTIFACT_TYPE.TSK_INTERESTING_ARTIFACT_HIT.getTypeID() + ", "
-				+ BlackboardArtifact.ARTIFACT_TYPE.TSK_FACE_DETECTED.getTypeID() + ", "
-				+ BlackboardArtifact.ARTIFACT_TYPE.TSK_ENCRYPTION_SUSPECTED.getTypeID() + ", "
-				+ BlackboardArtifact.ARTIFACT_TYPE.TSK_OBJECT_DETECTED.getTypeID() + ", "
-				+ BlackboardArtifact.ARTIFACT_TYPE.TSK_VERIFICATION_FAILED.getTypeID() + ", "
-				+ BlackboardArtifact.ARTIFACT_TYPE.TSK_DATA_SOURCE_USAGE.getTypeID() + ", "
-				+ BlackboardArtifact.ARTIFACT_TYPE.TSK_USER_CONTENT_SUSPECTED.getTypeID() + ", "
-				+ BlackboardArtifact.ARTIFACT_TYPE.TSK_WEB_ACCOUNT_TYPE.getTypeID() + ", "
-				+ BlackboardArtifact.ARTIFACT_TYPE.TSK_YARA_HIT.getTypeID() + ", "
-				+ BlackboardArtifact.ARTIFACT_TYPE.TSK_WEB_CATEGORIZATION.getTypeID();
+				BlackboardArtifact.Type.TSK_KEYWORD_HIT.getTypeID() + ", " 
+				+ BlackboardArtifact.Type.TSK_HASHSET_HIT.getTypeID() + ", "
+				+ BlackboardArtifact.Type.TSK_INTERESTING_FILE_HIT.getTypeID() + ", "
+				+ BlackboardArtifact.Type.TSK_TAG_FILE.getTypeID() + ", "
+				+ BlackboardArtifact.Type.TSK_TAG_ARTIFACT.getTypeID() + ", "
+				+ BlackboardArtifact.Type.TSK_ENCRYPTION_DETECTED.getTypeID() + ", "
+				+ BlackboardArtifact.Type.TSK_EXT_MISMATCH_DETECTED.getTypeID() + ", "
+				+ BlackboardArtifact.Type.TSK_INTERESTING_ARTIFACT_HIT.getTypeID() + ", "
+				+ BlackboardArtifact.Type.TSK_FACE_DETECTED.getTypeID() + ", "
+				+ BlackboardArtifact.Type.TSK_ENCRYPTION_SUSPECTED.getTypeID() + ", "
+				+ BlackboardArtifact.Type.TSK_OBJECT_DETECTED.getTypeID() + ", "
+				+ BlackboardArtifact.Type.TSK_VERIFICATION_FAILED.getTypeID() + ", "
+				+ BlackboardArtifact.Type.TSK_DATA_SOURCE_USAGE.getTypeID() + ", "
+				+ BlackboardArtifact.Type.TSK_USER_CONTENT_SUSPECTED.getTypeID() + ", "
+				+ BlackboardArtifact.Type.TSK_WEB_ACCOUNT_TYPE.getTypeID() + ", "
+				+ BlackboardArtifact.Type.TSK_YARA_HIT.getTypeID() + ", "
+				+ BlackboardArtifact.Type.TSK_WEB_CATEGORIZATION.getTypeID();
 			statement.execute("UPDATE blackboard_artifact_types SET category_type = " + BlackboardArtifact.Category.ANALYSIS_RESULT.getID()
 					+ " WHERE artifact_type_id IN (" + analysisTypeObjIdList + ")");
 
@@ -4080,7 +4080,9 @@ public class SleuthkitCase {
 	 *
 	 * @throws TskCoreException exception thrown if a critical error occurs
 	 *                          within TSK core
+	 * @deprecated Since 4.11.1, please use getBlackboardArtifacts(int artifactTypeID, long obj_id).
 	 */
+	@Deprecated
 	public ArrayList<BlackboardArtifact> getBlackboardArtifacts(ARTIFACT_TYPE artifactType, long obj_id) throws TskCoreException {
 		return getBlackboardArtifacts(artifactType.getTypeID(), obj_id);
 	}
@@ -4132,7 +4134,9 @@ public class SleuthkitCase {
 	 *
 	 * @throws TskCoreException exception thrown if a critical error occurs
 	 *                          within TSK core
+	 * @deprecated As of 4.11.1, please use getBlackboardArtifactsCount(int artifactTypeID, long obj_id).
 	 */
+	@Deprecated
 	public long getBlackboardArtifactsCount(ARTIFACT_TYPE artifactType, long obj_id) throws TskCoreException {
 		return getArtifactsCountHelper(artifactType.getTypeID(), obj_id);
 	}
@@ -4162,7 +4166,9 @@ public class SleuthkitCase {
 	 *
 	 * @throws TskCoreException exception thrown if a critical error occurs
 	 *                          within TSK core
+	 * @deprecated As of 4.11.1, please use getBlackboardArtifactsCount(int artifactTypeID).
 	 */
+	@Deprecated
 	public ArrayList<BlackboardArtifact> getBlackboardArtifacts(ARTIFACT_TYPE artifactType) throws TskCoreException {
 		return getArtifactsHelper("blackboard_artifact_types.artifact_type_id = " + artifactType.getTypeID() + ";");
 	}
@@ -4179,7 +4185,9 @@ public class SleuthkitCase {
 	 *
 	 * @throws TskCoreException exception thrown if a critical error occurs
 	 *                          within TSK core
+	 * @deprecated As of 4.11.1, please use ...TODO.
 	 */
+	@Deprecated
 	public List<BlackboardArtifact> getBlackboardArtifacts(ARTIFACT_TYPE artifactType, BlackboardAttribute.ATTRIBUTE_TYPE attrType, String value) throws TskCoreException {
 		CaseDbConnection connection = connections.getConnection();
 		acquireSingleUserCaseReadLock();
@@ -5049,7 +5057,9 @@ public class SleuthkitCase {
 	 *
 	 * @throws TskCoreException exception thrown if a critical error occurs
 	 *                          within tsk core
+	 * @deprecated Since 4.11.1 please use one of Blackboard.newDataArtifact or Blackboard.newAnalysisResult.
 	 */
+	@Deprecated
 	public BlackboardArtifact newBlackboardArtifact(ARTIFACT_TYPE artifactType, long obj_id) throws TskCoreException {
 		return newBlackboardArtifact(artifactType.getTypeID(), obj_id, artifactType.getLabel(), artifactType.getDisplayName());
 	}

@@ -27,7 +27,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.commons.lang3.StringUtils;
 import org.sleuthkit.datamodel.AbstractFile;
-import org.sleuthkit.datamodel.BlackboardArtifact.ARTIFACT_TYPE;
 import org.sleuthkit.datamodel.BlackboardAttribute.ATTRIBUTE_TYPE;
 import org.sleuthkit.datamodel.Account;
 import org.sleuthkit.datamodel.AccountFileInstance;
@@ -277,7 +276,7 @@ public final class CommunicationArtifactsHelper extends ArtifactHelperBase {
 		Collection<BlackboardAttribute> attributes = new ArrayList<>();
 
 		// create TSK_CONTACT artifact
-		contactArtifact = getContent().newArtifact(ARTIFACT_TYPE.TSK_CONTACT);
+		contactArtifact = getContent().newArtifact(BlackboardArtifact.Type.TSK_CONTACT);
 
 		// construct attributes
 		addAttributeIfNotNull(ATTRIBUTE_TYPE.TSK_NAME, contactName, attributes);
@@ -507,7 +506,7 @@ public final class CommunicationArtifactsHelper extends ArtifactHelperBase {
 		Collection<BlackboardAttribute> attributes = new ArrayList<>();
 
 		// create TSK_MESSAGE artifact
-		msgArtifact = getContent().newArtifact(ARTIFACT_TYPE.TSK_MESSAGE);
+		msgArtifact = getContent().newArtifact(BlackboardArtifact.Type.TSK_MESSAGE);
 
 		// construct attributes
 		attributes.add(new BlackboardAttribute(ATTRIBUTE_TYPE.TSK_MESSAGE_TYPE, getModuleName(), messageType));
@@ -769,7 +768,7 @@ public final class CommunicationArtifactsHelper extends ArtifactHelperBase {
 		Collection<BlackboardAttribute> attributes = new ArrayList<>();
 
 		// Create TSK_CALLLOG artifact
-		callLogArtifact = getContent().newArtifact(ARTIFACT_TYPE.TSK_CALLLOG);
+		callLogArtifact = getContent().newArtifact(BlackboardArtifact.Type.TSK_CALLLOG);
 
 		// Add basic attributes 
 		addAttributeIfNotZero(ATTRIBUTE_TYPE.TSK_DATETIME_START, startDateTime, attributes);
@@ -908,7 +907,7 @@ public final class CommunicationArtifactsHelper extends ArtifactHelperBase {
 		Collection<BlackboardAttribute> attributes = new ArrayList<>();
 		attributes.add(new BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_ASSOCIATED_ARTIFACT, this.getModuleName(), message.getArtifactID()));
 
-		BlackboardArtifact bba = attachedFile.newArtifact(ARTIFACT_TYPE.TSK_ASSOCIATED_OBJECT);
+		BlackboardArtifact bba = attachedFile.newArtifact(BlackboardArtifact.Type.TSK_ASSOCIATED_OBJECT);
 		bba.addAttributes(attributes); //write out to bb
 		return bba;
 	}

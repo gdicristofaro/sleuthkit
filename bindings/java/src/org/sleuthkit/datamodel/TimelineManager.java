@@ -43,7 +43,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.joda.time.DateTimeZone;
 import org.joda.time.Interval;
-import static org.sleuthkit.datamodel.BlackboardArtifact.ARTIFACT_TYPE.TSK_TL_EVENT;
 import static org.sleuthkit.datamodel.BlackboardAttribute.ATTRIBUTE_TYPE.TSK_TL_EVENT_TYPE;
 import static org.sleuthkit.datamodel.CollectionUtils.isNotEmpty;
 import org.sleuthkit.datamodel.SleuthkitCase.CaseDbConnection;
@@ -86,7 +85,7 @@ public final class TimelineManager {
 					.build();
 
 	// all known artifact type ids (used for determining if an artifact is standard or custom event)
-	private static final Set<Integer> ARTIFACT_TYPE_IDS = Stream.of(BlackboardArtifact.ARTIFACT_TYPE.values())
+	private static final Set<Integer> ARTIFACT_TYPE_IDS = BlackboardArtifact.Type.STANDARD_TYPES.stream()
 			.map(artType -> artType.getTypeID())
 			.collect(Collectors.toSet());
 

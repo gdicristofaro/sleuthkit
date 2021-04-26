@@ -534,6 +534,7 @@ public class BlackboardArtifact implements Content {
 	 *
 	 * @throws TskCoreException if critical error occurred within tsk core
 	 */
+	@Deprecated
 	@Override
 	public ArrayList<BlackboardArtifact> getArtifacts(BlackboardArtifact.ARTIFACT_TYPE type) throws TskCoreException {
 		// Currently we don't have any artifacts derived from an artifact.
@@ -595,6 +596,7 @@ public class BlackboardArtifact implements Content {
 	 *
 	 * @throws TskCoreException if critical error occurred within tsk core
 	 */
+	@Deprecated
 	@Override
 	public long getArtifactsCount(BlackboardArtifact.ARTIFACT_TYPE type) throws TskCoreException {
 		// Currently we don't have any artifacts derived from an artifact.
@@ -713,6 +715,7 @@ public class BlackboardArtifact implements Content {
 	 *
 	 * @throws TskCoreException if critical error occurred within tsk core
 	 */
+	@Deprecated
 	@Override
 	public BlackboardArtifact newArtifact(BlackboardArtifact.ARTIFACT_TYPE type) throws TskCoreException {
 		throw new TskCoreException("Cannot create artifact of an artifact. Not supported.");
@@ -1343,7 +1346,9 @@ public class BlackboardArtifact implements Content {
 		 * Constructs a standard artifact type.
 		 *
 		 * @param type An element of the ARTIFACT_TYPE enum.
+		 * @deprecated Since 4.11.1 please use a different constructor.
 		 */
+		@Deprecated
 		public Type(ARTIFACT_TYPE type) {
 			this(type.getTypeID(), type.getLabel(), type.getDisplayName(), type.getCategory());
 		}
@@ -1434,7 +1439,9 @@ public class BlackboardArtifact implements Content {
 	 * Enum for the standard artifact types. Refer to
 	 * http://sleuthkit.org/sleuthkit/docs/jni-docs/latest/artifact_catalog_page.html
 	 * for details on the standard attributes for each artifact type.
+	 * @deprecated Since 4.11.1 please use instances available in BlackboardArtifact.Type.
 	 */
+	@Deprecated
 	public enum ARTIFACT_TYPE implements SleuthkitVisitableItem {
 
 		/**
@@ -1884,7 +1891,9 @@ public class BlackboardArtifact implements Content {
 		 * @param label The type name
 		 *
 		 * @return The enum element.
+		 * @deprecated Since 4.11.1 please use...TODO
 		 */
+		@Deprecated
 		static public ARTIFACT_TYPE fromLabel(String label) {
 			for (ARTIFACT_TYPE value : ARTIFACT_TYPE.values()) {
 				if (value.getLabel().equals(label)) {
@@ -1903,7 +1912,9 @@ public class BlackboardArtifact implements Content {
 		 * @param id The type id.
 		 *
 		 * @return the corresponding enum
+		 * @deprecated Since 4.11.1 please use...TODO
 		 */
+		@Deprecated
 		static public ARTIFACT_TYPE fromID(int id) {
 			for (ARTIFACT_TYPE value : ARTIFACT_TYPE.values()) {
 				if (value.getTypeID() == id) {

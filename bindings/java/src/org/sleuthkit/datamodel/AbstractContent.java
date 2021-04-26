@@ -320,7 +320,7 @@ public abstract class AbstractContent implements Content {
 	@Override
 	public BlackboardArtifact newArtifact(int artifactTypeID) throws TskCoreException {
 		// don't let them make more than 1 GEN_INFO
-		if (artifactTypeID == ARTIFACT_TYPE.TSK_GEN_INFO.getTypeID()) {
+		if (artifactTypeID == BlackboardArtifact.Type.TSK_GEN_INFO.getTypeID()) {
 			return getGenInfoArtifact(true);
 		}
 		return db.newBlackboardArtifact(artifactTypeID, objId);
@@ -353,6 +353,7 @@ public abstract class AbstractContent implements Content {
 		return artifact;
 	}
 	
+	@Deprecated
 	@Override
 	public BlackboardArtifact newArtifact(BlackboardArtifact.ARTIFACT_TYPE type) throws TskCoreException {
 		return newArtifact(type.getTypeID());
@@ -365,7 +366,7 @@ public abstract class AbstractContent implements Content {
 
 	@Override
 	public ArrayList<BlackboardArtifact> getArtifacts(int artifactTypeID) throws TskCoreException {
-		if (artifactTypeID == ARTIFACT_TYPE.TSK_GEN_INFO.getTypeID()) {
+		if (artifactTypeID == BlackboardArtifact.Type.TSK_GEN_INFO.getTypeID()) {
 			if (genInfoArtifact == null) // don't make one if it doesn't already exist
 			{
 				getGenInfoArtifact(false);
@@ -381,6 +382,7 @@ public abstract class AbstractContent implements Content {
 		return db.getBlackboardArtifacts(artifactTypeID, objId);
 	}
 
+	@Deprecated
 	@Override
 	public ArrayList<BlackboardArtifact> getArtifacts(BlackboardArtifact.ARTIFACT_TYPE type) throws TskCoreException {
 		return getArtifacts(type.getTypeID());
@@ -398,11 +400,11 @@ public abstract class AbstractContent implements Content {
 		}
 
 		// go to db directly to avoid infinite loop
-		ArrayList<BlackboardArtifact> arts = db.getBlackboardArtifacts(BlackboardArtifact.ARTIFACT_TYPE.TSK_GEN_INFO, objId);
+		ArrayList<BlackboardArtifact> arts = db.getBlackboardArtifacts(BlackboardArtifact.Type.TSK_GEN_INFO, objId);
 		BlackboardArtifact retArt;
 		if (arts.isEmpty()) {
 			if (create) {
-				retArt = db.newBlackboardArtifact(BlackboardArtifact.ARTIFACT_TYPE.TSK_GEN_INFO, objId);
+				retArt = db.newBlackboardArtifact(BlackboardArtifact.Type.TSK_GEN_INFO, objId);
 			} else {
 				return null;
 			}
@@ -463,6 +465,7 @@ public abstract class AbstractContent implements Content {
 		return db.getBlackboardArtifactsCount(artifactTypeID, objId);
 	}
 
+	@Deprecated
 	@Override
 	public long getArtifactsCount(ARTIFACT_TYPE type) throws TskCoreException {
 		return db.getBlackboardArtifactsCount(type, objId);
@@ -476,7 +479,7 @@ public abstract class AbstractContent implements Content {
 	@Override
 	public Set<String> getHashSetNames() throws TskCoreException {
 		Set<String> hashNames = new HashSet<String>();
-		ArrayList<BlackboardArtifact> artifacts = getArtifacts(BlackboardArtifact.ARTIFACT_TYPE.TSK_HASHSET_HIT);
+		ArrayList<BlackboardArtifact> artifacts = getArtifacts(BlackboardArtifact.Type.TSK_HASHSET_HIT);
 
 		for (BlackboardArtifact a : artifacts) {
 			BlackboardAttribute attribute = a.getAttribute(new BlackboardAttribute.Type(ATTRIBUTE_TYPE.TSK_SET_NAME));

@@ -24,10 +24,10 @@ import static java.util.Collections.singleton;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
-import static org.sleuthkit.datamodel.BlackboardArtifact.ARTIFACT_TYPE.TSK_CALLLOG;
-import static org.sleuthkit.datamodel.BlackboardArtifact.ARTIFACT_TYPE.TSK_CONTACT;
-import static org.sleuthkit.datamodel.BlackboardArtifact.ARTIFACT_TYPE.TSK_EMAIL_MSG;
-import static org.sleuthkit.datamodel.BlackboardArtifact.ARTIFACT_TYPE.TSK_MESSAGE;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_CALLLOG;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_CONTACT;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_EMAIL_MSG;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_MESSAGE;
 import static org.sleuthkit.datamodel.CollectionUtils.hashSetOf;
 
 /**

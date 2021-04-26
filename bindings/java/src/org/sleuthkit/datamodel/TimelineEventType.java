@@ -26,7 +26,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.SortedSet;
-import static org.sleuthkit.datamodel.BlackboardArtifact.ARTIFACT_TYPE.*;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.*;
 import static org.sleuthkit.datamodel.BlackboardAttribute.ATTRIBUTE_TYPE.*;
 import org.sleuthkit.datamodel.BlackboardAttribute.Type;
 import static org.sleuthkit.datamodel.BundleProvider.getBundle;

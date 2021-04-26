@@ -21,8 +21,6 @@ package org.sleuthkit.datamodel;
 import java.util.List;
 import java.util.ArrayList;
 
-import org.sleuthkit.datamodel.BlackboardArtifact.ARTIFACT_TYPE;
-
 /**
  * Utility class to combine information from various OS info artifacts into
  * fewer objects.
@@ -100,7 +98,7 @@ public class OSUtility {
 		List<OSInfo> infoList = new ArrayList<OSInfo>();
 
 		// Get all OS_INFO artifacts for this case
-		ArrayList<BlackboardArtifact> results = skCase.getBlackboardArtifacts(ARTIFACT_TYPE.TSK_OS_INFO);
+		ArrayList<BlackboardArtifact> results = skCase.getBlackboardArtifacts(BlackboardArtifact.Type.TSK_OS_INFO);
 
 		for (BlackboardArtifact art : results) {
 

@@ -101,7 +101,7 @@ public final class WebBrowserArtifactsHelper extends ArtifactHelperBase {
 		Collection<BlackboardAttribute> attributes = new ArrayList<>();
 
 		// create artifact
-		bookMarkArtifact = getContent().newArtifact(BlackboardArtifact.ARTIFACT_TYPE.TSK_WEB_BOOKMARK);
+		bookMarkArtifact = getContent().newArtifact(BlackboardArtifact.Type.TSK_WEB_BOOKMARK);
 
 		// construct attributes 
 		attributes.add(new BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_URL, getModuleName(), url));
@@ -171,7 +171,7 @@ public final class WebBrowserArtifactsHelper extends ArtifactHelperBase {
 		Collection<BlackboardAttribute> attributes = new ArrayList<>();
 
 		// create artifact
-		cookieArtifact = getContent().newArtifact(BlackboardArtifact.ARTIFACT_TYPE.TSK_WEB_COOKIE);
+		cookieArtifact = getContent().newArtifact(BlackboardArtifact.Type.TSK_WEB_COOKIE);
 
 		// construct attributes 
 		attributes.add(new BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_URL, getModuleName(), url));
@@ -233,7 +233,7 @@ public final class WebBrowserArtifactsHelper extends ArtifactHelperBase {
 		Collection<BlackboardAttribute> attributes = new ArrayList<>();
 
 		// reate artifact
-		webDownloadArtifact = getContent().newArtifact(BlackboardArtifact.ARTIFACT_TYPE.TSK_WEB_DOWNLOAD);
+		webDownloadArtifact = getContent().newArtifact(BlackboardArtifact.Type.TSK_WEB_DOWNLOAD);
 
 		// construct attributes 
 		attributes.add(new BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_PATH, getModuleName(), path));
@@ -322,7 +322,7 @@ public final class WebBrowserArtifactsHelper extends ArtifactHelperBase {
 		}
 
 		// create artifact
-		webFormAddressArtifact = getContent().newArtifact(BlackboardArtifact.ARTIFACT_TYPE.TSK_WEB_FORM_ADDRESS);
+		webFormAddressArtifact = getContent().newArtifact(BlackboardArtifact.Type.TSK_WEB_FORM_ADDRESS);
 
 		// construct attributes 
 		attributes.add(new BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_NAME, getModuleName(), personName));
@@ -390,7 +390,7 @@ public final class WebBrowserArtifactsHelper extends ArtifactHelperBase {
 		Collection<BlackboardAttribute> attributes = new ArrayList<>();
 
 		// create artifact
-		webFormAutofillArtifact = getContent().newArtifact(BlackboardArtifact.ARTIFACT_TYPE.TSK_WEB_FORM_AUTOFILL);
+		webFormAutofillArtifact = getContent().newArtifact(BlackboardArtifact.Type.TSK_WEB_FORM_AUTOFILL);
 
 		// construct attributes 
 		attributes.add(new BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_NAME, getModuleName(), name));
@@ -456,7 +456,7 @@ public final class WebBrowserArtifactsHelper extends ArtifactHelperBase {
 		Collection<BlackboardAttribute> attributes = new ArrayList<>();
 
 		// create artifact
-		webHistoryArtifact = getContent().newArtifact(BlackboardArtifact.ARTIFACT_TYPE.TSK_WEB_HISTORY);
+		webHistoryArtifact = getContent().newArtifact(BlackboardArtifact.Type.TSK_WEB_HISTORY);
 
 		// construct attributes 
 		attributes.add(new BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_URL, getModuleName(), url));
