@@ -1346,7 +1346,7 @@ public class BlackboardArtifact implements Content {
 		 * Constructs a standard artifact type.
 		 *
 		 * @param type An element of the ARTIFACT_TYPE enum.
-		 * @deprecated Since 4.11.1 please use a different constructor.
+		 * @deprecated Please use a different constructor.
 		 */
 		@Deprecated
 		public Type(ARTIFACT_TYPE type) {
@@ -1439,7 +1439,7 @@ public class BlackboardArtifact implements Content {
 	 * Enum for the standard artifact types. Refer to
 	 * http://sleuthkit.org/sleuthkit/docs/jni-docs/latest/artifact_catalog_page.html
 	 * for details on the standard attributes for each artifact type.
-	 * @deprecated Since 4.11.1 please use instances available in BlackboardArtifact.Type.
+	 * @deprecated Please use instances available in BlackboardArtifact.Type.
 	 */
 	@Deprecated
 	public enum ARTIFACT_TYPE implements SleuthkitVisitableItem {
@@ -1891,7 +1891,7 @@ public class BlackboardArtifact implements Content {
 		 * @param label The type name
 		 *
 		 * @return The enum element.
-		 * @deprecated Since 4.11.1 please use...TODO
+		 * @deprecated ARTIFACT_TYPE is deprecated. Please use SleuthkitCase.getBlackboardArtifactTypesInUse.
 		 */
 		@Deprecated
 		static public ARTIFACT_TYPE fromLabel(String label) {
@@ -1912,7 +1912,7 @@ public class BlackboardArtifact implements Content {
 		 * @param id The type id.
 		 *
 		 * @return the corresponding enum
-		 * @deprecated Since 4.11.1 please use...TODO
+		 * @deprecated ARTIFACT_TYPE is deprecated. Please use SleuthkitCase.getBlackboardArtifactTypesInUse.
 		 */
 		@Deprecated
 		static public ARTIFACT_TYPE fromID(int id) {
@@ -1944,6 +1944,8 @@ public class BlackboardArtifact implements Content {
 		 *
 		 * @return An object of type T.
 		 */
+		@Deprecated
+		@SuppressWarnings("deprecation")
 		@Override
 		public <T> T accept(SleuthkitItemVisitor<T> visitor) {
 			return visitor.visit(this);

@@ -172,7 +172,7 @@ public interface Content extends SleuthkitVisitableItem {
 	 *         looked up from this)
 	 *
 	 * @throws TskCoreException if critical error occurred within tsk core
-	 * @deprecated Since 4.11.1 please use one of Blackboard.newDataArtifact or Blackboard.newAnalysisResult.
+	 * @deprecated Please use one of Blackboard.newDataArtifact or Blackboard.newAnalysisResult.
 	 */
 	@Deprecated
 	public BlackboardArtifact newArtifact(BlackboardArtifact.ARTIFACT_TYPE type) throws TskCoreException;
@@ -299,7 +299,7 @@ public interface Content extends SleuthkitVisitableItem {
 	 * @return a list of blackboard artifacts matching the type
 	 *
 	 * @throws TskCoreException if critical error occurred within tsk core
-	 * @deprecated Since 4.11.1 please use one of Blackboard.getDataArtifacts or Blackboard.getAnalysisResults.
+	 * @deprecated Please use one of Blackboard.getDataArtifacts or Blackboard.getAnalysisResults.
 	 */
 	@Deprecated
 	public ArrayList<BlackboardArtifact> getArtifacts(BlackboardArtifact.ARTIFACT_TYPE type) throws TskCoreException;
@@ -364,7 +364,7 @@ public interface Content extends SleuthkitVisitableItem {
 	 * @return count of blackboard artifacts matching the type
 	 *
 	 * @throws TskCoreException if critical error occurred within tsk core
-	 * @deprecated Since 4.11.1 please use getArtifactsCount(int artifactTypeID).
+	 * @deprecated Please use getArtifactsCount(int artifactTypeID).
 	 */
 	@Deprecated
 	public long getArtifactsCount(BlackboardArtifact.ARTIFACT_TYPE type) throws TskCoreException;

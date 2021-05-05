@@ -3815,7 +3815,9 @@ public class SleuthkitCase {
 	 * @return List of standard blackboard artifact types
 	 *
 	 * @throws TskCoreException
+	 * @deprecated Please use getArtifactTypesInUse.
 	 */
+	@Deprecated
 	public ArrayList<BlackboardArtifact.ARTIFACT_TYPE> getBlackboardArtifactTypesInUse() throws TskCoreException {
 		String typeIdList = "";
 		for (int i = 0; i < BlackboardArtifact.ARTIFACT_TYPE.values().length; ++i) {
@@ -4069,6 +4071,7 @@ public class SleuthkitCase {
 		return getArtifactsHelper("blackboard_artifacts.obj_id = " + obj_id + " AND blackboard_artifact_types.artifact_type_id = " + artifactTypeID + ";");
 	}
 
+
 	/**
 	 * Get all blackboard artifacts of a given type for the given object id.
 	 * Does not included rejected artifacts.
@@ -4080,10 +4083,27 @@ public class SleuthkitCase {
 	 *
 	 * @throws TskCoreException exception thrown if a critical error occurs
 	 *                          within TSK core
-	 * @deprecated Since 4.11.1, please use getBlackboardArtifacts(int artifactTypeID, long obj_id).
+	 * @deprecated Please use getBlackboardArtifacts(BlackboardArtifact.Type artifactType, long obj_id) instead.
+	 * 
 	 */
 	@Deprecated
 	public ArrayList<BlackboardArtifact> getBlackboardArtifacts(ARTIFACT_TYPE artifactType, long obj_id) throws TskCoreException {
+		return getBlackboardArtifacts(artifactType.getTypeID(), obj_id);
+	}
+
+	/**
+	 * Get all blackboard artifacts of a given type for the given object id.
+	 * Does not included rejected artifacts.
+	 *
+	 * @param artifactType The artifact type.
+	 * @param obj_id       The object id.
+	 *
+	 * @return A list of blackboard artifacts.
+	 *
+	 * @throws TskCoreException Exception thrown if a critical error occurs
+	 *                          within TSK core.
+	 */
+	public ArrayList<BlackboardArtifact> getBlackboardArtifacts(BlackboardArtifact.Type artifactType, long obj_id) throws TskCoreException {
 		return getBlackboardArtifacts(artifactType.getTypeID(), obj_id);
 	}
 
@@ -5057,7 +5077,7 @@ public class SleuthkitCase {
 	 *
 	 * @throws TskCoreException exception thrown if a critical error occurs
 	 *                          within tsk core
-	 * @deprecated Since 4.11.1 please use one of Blackboard.newDataArtifact or Blackboard.newAnalysisResult.
+	 * @deprecated Please use one of Blackboard.newDataArtifact or Blackboard.newAnalysisResult.
 	 */
 	@Deprecated
 	public BlackboardArtifact newBlackboardArtifact(ARTIFACT_TYPE artifactType, long obj_id) throws TskCoreException {
