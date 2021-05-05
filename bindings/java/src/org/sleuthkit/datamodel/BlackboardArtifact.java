@@ -33,7 +33,6 @@ import java.util.Objects;
 import java.util.ResourceBundle;
 import java.util.Set;
 import org.sleuthkit.datamodel.Blackboard.BlackboardException;
-import org.sleuthkit.datamodel.BlackboardArtifact.ARTIFACT_TYPE;
 import org.sleuthkit.datamodel.BlackboardAttribute.ATTRIBUTE_TYPE;
 import org.sleuthkit.datamodel.SleuthkitCase.CaseDbTransaction;
 import org.sleuthkit.datamodel.SleuthkitCase.ObjectInfo;

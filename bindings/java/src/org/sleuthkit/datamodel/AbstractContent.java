@@ -27,7 +27,6 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.sleuthkit.datamodel.Blackboard.BlackboardException;
-import org.sleuthkit.datamodel.BlackboardArtifact.ARTIFACT_TYPE;
 import org.sleuthkit.datamodel.BlackboardAttribute.ATTRIBUTE_TYPE;
 import org.sleuthkit.datamodel.SleuthkitCase.CaseDbTransaction;
 import org.sleuthkit.datamodel.SleuthkitCase.ObjectInfo;
@@ -467,7 +466,8 @@ public abstract class AbstractContent implements Content {
 
 	@Deprecated
 	@Override
-	public long getArtifactsCount(ARTIFACT_TYPE type) throws TskCoreException {
+	@SuppressWarnings("Deprecation")
+	public long getArtifactsCount(BlackboardArtifact.ARTIFACT_TYPE type) throws TskCoreException {
 		return db.getBlackboardArtifactsCount(type, objId);
 	}
 

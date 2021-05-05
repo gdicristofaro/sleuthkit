@@ -68,7 +68,6 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.postgresql.util.PSQLState;
-import org.sleuthkit.datamodel.BlackboardArtifact.ARTIFACT_TYPE;
 import org.sleuthkit.datamodel.BlackboardAttribute.ATTRIBUTE_TYPE;
 import org.sleuthkit.datamodel.BlackboardAttribute.TSK_BLACKBOARD_ATTRIBUTE_VALUE_TYPE;
 import org.sleuthkit.datamodel.IngestJobInfo.IngestJobStatusType;
@@ -1187,7 +1186,7 @@ public class SleuthkitCase {
 				"FROM blackboard_artifacts INNER JOIN blackboard_attributes \n" +
 				"ON blackboard_artifacts.artifact_id = blackboard_attributes.artifact_id \n" +
 				"WHERE blackboard_artifacts.artifact_type_id = " +
-					ARTIFACT_TYPE.TSK_TAG_FILE.getTypeID() + 
+					BlackboardArtifact.ARTIFACT_TYPE.TSK_TAG_FILE.getTypeID() + 
 					" AND blackboard_attributes.attribute_type_id = " + BlackboardAttribute.ATTRIBUTE_TYPE.TSK_TAG_NAME.getTypeID() 
 					+ ") AS tagNames \n" +
 				"INNER JOIN \n" +
@@ -1236,7 +1235,7 @@ public class SleuthkitCase {
 				"FROM blackboard_artifacts INNER JOIN blackboard_attributes \n" +
 				"ON blackboard_artifacts.artifact_id = blackboard_attributes.artifact_id \n" +
 				"WHERE blackboard_artifacts.artifact_type_id = " +
-					ARTIFACT_TYPE.TSK_TAG_ARTIFACT.getTypeID() + 
+					BlackboardArtifact.ARTIFACT_TYPE.TSK_TAG_ARTIFACT.getTypeID() + 
 					" AND blackboard_attributes.attribute_type_id = " + BlackboardAttribute.ATTRIBUTE_TYPE.TSK_TAG_NAME.getTypeID() 
 					+ ") AS tagNames \n" +
 				"INNER JOIN \n" +
@@ -1277,12 +1276,12 @@ public class SleuthkitCase {
 			statement.execute(
 					"DELETE FROM blackboard_attributes WHERE artifact_id IN " //NON-NLS
 					+ "(SELECT artifact_id FROM blackboard_artifacts WHERE artifact_type_id = " //NON-NLS
-					+ ARTIFACT_TYPE.TSK_TAG_FILE.getTypeID()
-					+ " OR artifact_type_id = " + ARTIFACT_TYPE.TSK_TAG_ARTIFACT.getTypeID() + ");"); //NON-NLS
+					+ BlackboardArtifact.ARTIFACT_TYPE.TSK_TAG_FILE.getTypeID()
+					+ " OR artifact_type_id = " + BlackboardArtifact.ARTIFACT_TYPE.TSK_TAG_ARTIFACT.getTypeID() + ");"); //NON-NLS
 			statement.execute(
 					"DELETE FROM blackboard_artifacts WHERE artifact_type_id = " //NON-NLS
-					+ ARTIFACT_TYPE.TSK_TAG_FILE.getTypeID()
-					+ " OR artifact_type_id = " + ARTIFACT_TYPE.TSK_TAG_ARTIFACT.getTypeID() + ";"); //NON-NLS
+					+ BlackboardArtifact.ARTIFACT_TYPE.TSK_TAG_FILE.getTypeID()
+					+ " OR artifact_type_id = " + BlackboardArtifact.ARTIFACT_TYPE.TSK_TAG_ARTIFACT.getTypeID() + ";"); //NON-NLS
 
 			return new CaseDbSchemaVersionNumber(3, 0);
 		} finally {
@@ -2381,8 +2380,8 @@ public class SleuthkitCase {
 				BlackboardArtifact.Type.TSK_KEYWORD_HIT.getTypeID() + ", " 
 				+ BlackboardArtifact.Type.TSK_HASHSET_HIT.getTypeID() + ", "
 				+ BlackboardArtifact.Type.TSK_INTERESTING_FILE_HIT.getTypeID() + ", "
-				+ ARTIFACT_TYPE.TSK_TAG_FILE.getTypeID() + ", "
-				+ ARTIFACT_TYPE.TSK_TAG_ARTIFACT.getTypeID() + ", "
+				+ BlackboardArtifact.ARTIFACT_TYPE.TSK_TAG_FILE.getTypeID() + ", "
+				+ BlackboardArtifact.ARTIFACT_TYPE.TSK_TAG_ARTIFACT.getTypeID() + ", "
 				+ BlackboardArtifact.Type.TSK_ENCRYPTION_DETECTED.getTypeID() + ", "
 				+ BlackboardArtifact.Type.TSK_EXT_MISMATCH_DETECTED.getTypeID() + ", "
 				+ BlackboardArtifact.Type.TSK_INTERESTING_ARTIFACT_HIT.getTypeID() + ", "
@@ -3837,7 +3836,7 @@ public class SleuthkitCase {
 			rs = connection.executeQuery(s, query);
 			ArrayList<BlackboardArtifact.ARTIFACT_TYPE> usedArts = new ArrayList<BlackboardArtifact.ARTIFACT_TYPE>();
 			while (rs.next()) {
-				usedArts.add(ARTIFACT_TYPE.fromID(rs.getInt("artifact_type_id")));
+				usedArts.add(BlackboardArtifact.ARTIFACT_TYPE.fromID(rs.getInt("artifact_type_id")));
 			}
 			return usedArts;
 		} catch (SQLException ex) {
@@ -4087,7 +4086,7 @@ public class SleuthkitCase {
 	 * 
 	 */
 	@Deprecated
-	public ArrayList<BlackboardArtifact> getBlackboardArtifacts(ARTIFACT_TYPE artifactType, long obj_id) throws TskCoreException {
+	public ArrayList<BlackboardArtifact> getBlackboardArtifacts(BlackboardArtifact.ARTIFACT_TYPE artifactType, long obj_id) throws TskCoreException {
 		return getBlackboardArtifacts(artifactType.getTypeID(), obj_id);
 	}
 
@@ -4157,7 +4156,7 @@ public class SleuthkitCase {
 	 * @deprecated As of 4.11.1, please use getBlackboardArtifactsCount(int artifactTypeID, long obj_id).
 	 */
 	@Deprecated
-	public long getBlackboardArtifactsCount(ARTIFACT_TYPE artifactType, long obj_id) throws TskCoreException {
+	public long getBlackboardArtifactsCount(BlackboardArtifact.ARTIFACT_TYPE artifactType, long obj_id) throws TskCoreException {
 		return getArtifactsCountHelper(artifactType.getTypeID(), obj_id);
 	}
 
@@ -4186,10 +4185,10 @@ public class SleuthkitCase {
 	 *
 	 * @throws TskCoreException exception thrown if a critical error occurs
 	 *                          within TSK core
-	 * @deprecated As of 4.11.1, please use getBlackboardArtifactsCount(int artifactTypeID).
+	 * @deprecated Please use getBlackboardArtifactsCount(int artifactTypeID).
 	 */
 	@Deprecated
-	public ArrayList<BlackboardArtifact> getBlackboardArtifacts(ARTIFACT_TYPE artifactType) throws TskCoreException {
+	public ArrayList<BlackboardArtifact> getBlackboardArtifacts(BlackboardArtifact.ARTIFACT_TYPE artifactType) throws TskCoreException {
 		return getArtifactsHelper("blackboard_artifact_types.artifact_type_id = " + artifactType.getTypeID() + ";");
 	}
 
@@ -4205,10 +4204,45 @@ public class SleuthkitCase {
 	 *
 	 * @throws TskCoreException exception thrown if a critical error occurs
 	 *                          within TSK core
-	 * @deprecated As of 4.11.1, please use ...TODO.
+	 * @deprecated Please use getBlackboardArtifacts(BlackboardArtifact.Type artifactType, BlackboardAttribute.Type attrType, String value).
 	 */
 	@Deprecated
-	public List<BlackboardArtifact> getBlackboardArtifacts(ARTIFACT_TYPE artifactType, BlackboardAttribute.ATTRIBUTE_TYPE attrType, String value) throws TskCoreException {
+	@SuppressWarnings("Deprecation")
+	public List<BlackboardArtifact> getBlackboardArtifacts(BlackboardArtifact.ARTIFACT_TYPE artifactType, BlackboardAttribute.ATTRIBUTE_TYPE attrType, String value) throws TskCoreException {
+		return getBlackboardArtifacts(artifactType.getTypeID(), attrType.getTypeID(), value);
+	}
+	
+	/**
+	 * Get all blackboard artifacts of a given type with an attribute of a given
+	 * type and String value. Does not include rejected artifacts.
+	 *
+	 * @param artifactType The artifact type.
+	 * @param attrType     The attribute type.
+	 * @param value        String value of attribute.
+	 *
+	 * @return The list of blackboard artifacts.
+	 *
+	 * @throws TskCoreException Exception thrown if a critical error occurs
+	 *                          within TSK core.
+	 */
+	public List<BlackboardArtifact> getBlackboardArtifacts(BlackboardArtifact.Type artifactType, BlackboardAttribute.Type attrType, String value) throws TskCoreException {
+		return getBlackboardArtifacts(artifactType.getTypeID(), attrType.getTypeID(), value);
+	}
+	
+	/**
+	 * Get all blackboard artifacts of a given type with an attribute of a given
+	 * type and String value. Does not include rejected artifacts.
+	 *
+	 * @param artifactTypeId The artifact type id.
+	 * @param attrTypeId     The attribute type id.
+	 * @param value        String value of attribute.
+	 *
+	 * @return The list of blackboard artifacts.
+	 *
+	 * @throws TskCoreException Exception thrown if a critical error occurs
+	 *                          within TSK core.
+	 */
+	private List<BlackboardArtifact> getBlackboardArtifacts(long artifactTypeId, long attrTypeId, String value) throws TskCoreException {
 		CaseDbConnection connection = connections.getConnection();
 		acquireSingleUserCaseReadLock();
 		Statement s = null;
@@ -4221,8 +4255,8 @@ public class SleuthkitCase {
 					+ "arts.review_status_id AS review_status_id "//NON-NLS
 					+ "FROM blackboard_artifacts AS arts, blackboard_attributes AS attrs, blackboard_artifact_types AS types " //NON-NLS
 					+ "WHERE arts.artifact_id = attrs.artifact_id " //NON-NLS
-					+ "AND attrs.attribute_type_id = " + attrType.getTypeID() //NON-NLS
-					+ " AND arts.artifact_type_id = " + artifactType.getTypeID() //NON-NLS
+					+ "AND attrs.attribute_type_id = " + attrTypeId //NON-NLS
+					+ " AND arts.artifact_type_id = " + artifactTypeId //NON-NLS
 					+ " AND attrs.value_text = '" + value + "'" //NON-NLS
 					+ " AND types.artifact_type_id=arts.artifact_type_id"
 					+ " AND arts.review_status_id !=" + BlackboardArtifact.ReviewStatus.REJECTED.getID());
@@ -5080,7 +5114,7 @@ public class SleuthkitCase {
 	 * @deprecated Please use one of Blackboard.newDataArtifact or Blackboard.newAnalysisResult.
 	 */
 	@Deprecated
-	public BlackboardArtifact newBlackboardArtifact(ARTIFACT_TYPE artifactType, long obj_id) throws TskCoreException {
+	public BlackboardArtifact newBlackboardArtifact(BlackboardArtifact.ARTIFACT_TYPE artifactType, long obj_id) throws TskCoreException {
 		return newBlackboardArtifact(artifactType.getTypeID(), obj_id, artifactType.getLabel(), artifactType.getDisplayName());
 	}
 

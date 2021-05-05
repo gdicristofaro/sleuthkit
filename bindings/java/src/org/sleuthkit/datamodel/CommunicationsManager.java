@@ -1231,7 +1231,10 @@ public final class CommunicationsManager {
 	public List<AccountFileInstance> getAccountFileInstances(Account account) throws TskCoreException {
 		List<AccountFileInstance> accountFileInstanceList = new ArrayList<>();
 
-		List<BlackboardArtifact> artifactList = getSleuthkitCase().getBlackboardArtifacts(BlackboardArtifact.Type.TSK_ACCOUNT.getTypeID(), BlackboardAttribute.ATTRIBUTE_TYPE.TSK_ID, account.getTypeSpecificID());
+		List<BlackboardArtifact> artifactList = getSleuthkitCase().getBlackboardArtifacts(
+				BlackboardArtifact.Type.TSK_ACCOUNT, 
+				new BlackboardAttribute.Type(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_ID), 
+				account.getTypeSpecificID());
 
 		if (artifactList != null && !artifactList.isEmpty()) {
 			for (BlackboardArtifact artifact : artifactList) {
