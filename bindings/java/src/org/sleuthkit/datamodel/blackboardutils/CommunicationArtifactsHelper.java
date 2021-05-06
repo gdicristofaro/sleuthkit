@@ -33,6 +33,9 @@ import org.sleuthkit.datamodel.Account;
 import org.sleuthkit.datamodel.AccountFileInstance;
 import org.sleuthkit.datamodel.Blackboard.BlackboardException;
 import org.sleuthkit.datamodel.BlackboardArtifact;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_CONTACT;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_MESSAGE;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_CALLLOG;
 import org.sleuthkit.datamodel.BlackboardAttribute;
 import org.sleuthkit.datamodel.Content;
 import org.sleuthkit.datamodel.DataSource;
@@ -69,11 +72,6 @@ import org.sleuthkit.datamodel.blackboardutils.attributes.MessageAttachments.Fil
 public final class CommunicationArtifactsHelper extends ArtifactHelperBase {
 
 	private static final Logger LOGGER = Logger.getLogger(CommunicationArtifactsHelper.class.getName());
-
-	private static final BlackboardArtifact.Type CONTACT_TYPE = new BlackboardArtifact.Type(ARTIFACT_TYPE.TSK_CONTACT);
-	private static final BlackboardArtifact.Type MESSAGE_TYPE = new BlackboardArtifact.Type(ARTIFACT_TYPE.TSK_MESSAGE);
-	private static final BlackboardArtifact.Type CALLOG_TYPE = new BlackboardArtifact.Type(ARTIFACT_TYPE.TSK_CALLLOG);
-	private static final BlackboardArtifact.Type ASSOCIATED_OBJ_TYPE = new BlackboardArtifact.Type(ARTIFACT_TYPE.TSK_ASSOCIATED_OBJECT);
 
 	/**
 	 * Enum for message read status
@@ -295,8 +293,8 @@ public final class CommunicationArtifactsHelper extends ArtifactHelperBase {
 		Content content = getContent();
 
 		contactArtifact = (content instanceof AbstractFile)
-				? ((AbstractFile) content).newDataArtifact(CONTACT_TYPE, attributes)
-				: content.newDataArtifact(CONTACT_TYPE, attributes, null);
+				? ((AbstractFile) content).newDataArtifact(TSK_CONTACT, attributes)
+				: content.newDataArtifact(TSK_CONTACT, attributes, null);
 
 		// create an account for each specified contact method, and a relationship with self account
 		createContactMethodAccountAndRelationship(Account.Type.PHONE, phoneNumber, contactArtifact, 0);
@@ -609,8 +607,8 @@ public final class CommunicationArtifactsHelper extends ArtifactHelperBase {
 		// create TSK_MESSAGE artifact
 		Content content = getContent();
 		BlackboardArtifact msgArtifact = (content instanceof AbstractFile)
-				? ((AbstractFile) content).newDataArtifact(MESSAGE_TYPE, attributes)
-				: content.newDataArtifact(MESSAGE_TYPE, attributes, null);
+				? ((AbstractFile) content).newDataArtifact(TSK_MESSAGE, attributes)
+				: content.newDataArtifact(TSK_MESSAGE, attributes, null);
 
 		// create sender/recipient relationships  
 		try {
@@ -853,8 +851,8 @@ public final class CommunicationArtifactsHelper extends ArtifactHelperBase {
 		// Create TSK_CALLLOG artifact
 		Content content = getContent();
 		BlackboardArtifact callLogArtifact = (content instanceof AbstractFile)
-				? ((AbstractFile) content).newDataArtifact(CALLOG_TYPE, attributes)
-				: content.newDataArtifact(CALLOG_TYPE, attributes, null);
+				? ((AbstractFile) content).newDataArtifact(TSK_CALLLOG, attributes)
+				: content.newDataArtifact(TSK_CALLLOG, attributes, null);
 
 		callLogArtifact.addAttributes(attributes);
 
@@ -914,7 +912,7 @@ public final class CommunicationArtifactsHelper extends ArtifactHelperBase {
 		Collection<BlackboardAttribute> attributes = new ArrayList<>();
 		attributes.add(new BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_ASSOCIATED_ARTIFACT, this.getModuleName(), message.getArtifactID()));
 
-		return attachedFile.newDataArtifact(ASSOCIATED_OBJ_TYPE, attributes);
+		return attachedFile.newDataArtifact(BlackboardArtifact.Type.TSK_ASSOCIATED_OBJECT, attributes);
 	}
 
 	/**

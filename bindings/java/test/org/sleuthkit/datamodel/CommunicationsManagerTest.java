@@ -1408,7 +1408,7 @@ public class CommunicationsManagerTest {
 
 		try {
 			// Add Email artifact
-			bbart = abstractFile.newDataArtifact(new BlackboardArtifact.Type(BlackboardArtifact.ARTIFACT_TYPE.TSK_EMAIL_MSG), bbattributes);
+			bbart = abstractFile.newDataArtifact(BlackboardArtifact.Type.TSK_EMAIL_MSG, bbattributes);
 
 			// Add account relationships
 			commsMgr.addRelationships(senderAccountInstance, recipientAccountInstances, bbart, MESSAGE, dateSent);
@@ -1475,7 +1475,7 @@ public class CommunicationsManagerTest {
 					new BlackboardAttribute(TSK_NAME, MODULE_NAME, name)
 			);
 
-			BlackboardArtifact bbart = abstractFile.newDataArtifact(new BlackboardArtifact.Type(BlackboardArtifact.ARTIFACT_TYPE.TSK_CALLLOG), attributes); //create a call log and then add attributes from result set.
+			BlackboardArtifact bbart = abstractFile.newDataArtifact(BlackboardArtifact.Type.TSK_CALLLOG, attributes); //create a call log and then add attributes from result set.
 			// Create a phone number account for the phone number
 			AccountFileInstance phoneNumAccount = commsMgr.createAccountFileInstance(PHONE, phoneNumber, MODULE_NAME, abstractFile);
 			List<AccountFileInstance> accountInstanceList = new ArrayList<AccountFileInstance>();
@@ -1508,7 +1508,7 @@ public class CommunicationsManagerTest {
 			);
 
 			//create Message artifact and then add attributes from result set.
-			BlackboardArtifact bbart = abstractFile.newDataArtifact(new BlackboardArtifact.Type(BlackboardArtifact.ARTIFACT_TYPE.TSK_MESSAGE), attributes);
+			BlackboardArtifact bbart = abstractFile.newDataArtifact(BlackboardArtifact.Type.TSK_MESSAGE, attributes);
 
 			// Create a phone number account for the phone number
 			AccountFileInstance phoneNumAccount = commsMgr.createAccountFileInstance(PHONE, phoneNumber, MODULE_NAME, abstractFile);
@@ -1535,7 +1535,7 @@ public class CommunicationsManagerTest {
 			);
 
 			// create a CONTACT artifact
-			BlackboardArtifact bbart = abstractFile.newDataArtifact(new BlackboardArtifact.Type(BlackboardArtifact.ARTIFACT_TYPE.TSK_CONTACT), attributes);
+			BlackboardArtifact bbart = abstractFile.newDataArtifact(BlackboardArtifact.Type.TSK_CONTACT, attributes);
 
 			// Create a phone number account for the phone number
 			AccountFileInstance phoneNumAccount = commsMgr.createAccountFileInstance(PHONE, phoneNumber, MODULE_NAME, abstractFile);

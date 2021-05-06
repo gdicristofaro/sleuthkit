@@ -112,7 +112,7 @@ public interface SleuthkitItemVisitor<T> {
 	 * @param tw blackboard artifact type to visit / act on
 	 *
 	 * @return result of the visit
-	 * @deprecated As of 4.11.1, please use...TODO
+	 * @deprecated
 	 */
 	@Deprecated
 	T visit(BlackboardArtifact.ARTIFACT_TYPE tw);

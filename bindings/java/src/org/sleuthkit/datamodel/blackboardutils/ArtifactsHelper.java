@@ -21,14 +21,11 @@ package org.sleuthkit.datamodel.blackboardutils;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Optional;
 import org.sleuthkit.datamodel.AbstractFile;
 import org.sleuthkit.datamodel.Blackboard.BlackboardException;
 import org.sleuthkit.datamodel.BlackboardArtifact;
-import org.sleuthkit.datamodel.BlackboardArtifact.ARTIFACT_TYPE;
 import org.sleuthkit.datamodel.BlackboardAttribute;
 import org.sleuthkit.datamodel.Content;
-import org.sleuthkit.datamodel.OsAccount;
 import org.sleuthkit.datamodel.SleuthkitCase;
 import org.sleuthkit.datamodel.TskCoreException;
 
@@ -37,7 +34,6 @@ import org.sleuthkit.datamodel.TskCoreException;
  *
  */
 public final class ArtifactsHelper extends ArtifactHelperBase {
-	private static final BlackboardArtifact.Type INSTALLED_PROG_TYPE = new BlackboardArtifact.Type(ARTIFACT_TYPE.TSK_INSTALLED_PROG);
 	
 	/**
 	 * Creates an artifact helper for modules to create artifacts.
@@ -96,8 +92,8 @@ public final class ArtifactsHelper extends ArtifactHelperBase {
 		// create artifact
 		Content content = getContent();
 		BlackboardArtifact installedProgramArtifact = (content instanceof AbstractFile)
-				? ((AbstractFile) content).newDataArtifact(INSTALLED_PROG_TYPE, attributes)
-				: content.newDataArtifact(INSTALLED_PROG_TYPE, attributes, null);
+				? ((AbstractFile) content).newDataArtifact(BlackboardArtifact.Type.TSK_INSTALLED_PROG, attributes)
+				: content.newDataArtifact(BlackboardArtifact.Type.TSK_INSTALLED_PROG, attributes, null);
 		
 		// post artifact 
 		getSleuthkitCase().getBlackboard().postArtifact(installedProgramArtifact, getModuleName());

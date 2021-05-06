@@ -31,6 +31,12 @@ import org.sleuthkit.datamodel.AbstractFile;
 import org.sleuthkit.datamodel.Account;
 import org.sleuthkit.datamodel.Blackboard.BlackboardException;
 import org.sleuthkit.datamodel.BlackboardArtifact;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_WEB_BOOKMARK;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_WEB_COOKIE;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_WEB_DOWNLOAD;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_WEB_FORM_ADDRESS;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_WEB_FORM_AUTOFILL;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_WEB_HISTORY;
 import org.sleuthkit.datamodel.BlackboardAttribute;
 import org.sleuthkit.datamodel.CommunicationsManager;
 import org.sleuthkit.datamodel.Content;
@@ -48,12 +54,6 @@ import org.sleuthkit.datamodel.TskCoreException;
 public final class WebBrowserArtifactsHelper extends ArtifactHelperBase {
 
 	private static final Logger LOGGER = Logger.getLogger(WebBrowserArtifactsHelper.class.getName());
-	private static final BlackboardArtifact.Type WEB_BOOKMARK_TYPE = new BlackboardArtifact.Type(BlackboardArtifact.ARTIFACT_TYPE.TSK_WEB_BOOKMARK);
-	private static final BlackboardArtifact.Type WEB_COOKIE_TYPE = new BlackboardArtifact.Type(BlackboardArtifact.ARTIFACT_TYPE.TSK_WEB_COOKIE);
-	private static final BlackboardArtifact.Type WEB_DOWNLOAD_TYPE = new BlackboardArtifact.Type(BlackboardArtifact.ARTIFACT_TYPE.TSK_WEB_DOWNLOAD);
-	private static final BlackboardArtifact.Type WEB_FORM_ADDRESS_TYPE = new BlackboardArtifact.Type(BlackboardArtifact.ARTIFACT_TYPE.TSK_WEB_FORM_ADDRESS);
-	private static final BlackboardArtifact.Type WEB_FORM_AUTOFILL_TYPE = new BlackboardArtifact.Type(BlackboardArtifact.ARTIFACT_TYPE.TSK_WEB_FORM_AUTOFILL);
-	private static final BlackboardArtifact.Type WEB_HISTORY_TYPE = new BlackboardArtifact.Type(BlackboardArtifact.ARTIFACT_TYPE.TSK_WEB_HISTORY);
 		
 	/**
 	 * Creates a WebBrowserArtifactsHelper.
@@ -119,8 +119,8 @@ public final class WebBrowserArtifactsHelper extends ArtifactHelperBase {
 		
 		Content content = getContent();
 		BlackboardArtifact bookMarkArtifact = (content instanceof AbstractFile)
-				? ((AbstractFile) content).newDataArtifact(WEB_BOOKMARK_TYPE, attributes)
-				: content.newDataArtifact(WEB_BOOKMARK_TYPE, attributes, null);
+				? ((AbstractFile) content).newDataArtifact(TSK_WEB_BOOKMARK, attributes)
+				: content.newDataArtifact(TSK_WEB_BOOKMARK, attributes, null);
 
 		// post artifact 
 		getSleuthkitCase().getBlackboard().postArtifact(bookMarkArtifact, getModuleName());
@@ -190,8 +190,8 @@ public final class WebBrowserArtifactsHelper extends ArtifactHelperBase {
 		
 		Content content = getContent();
 		BlackboardArtifact cookieArtifact = (content instanceof AbstractFile)
-				? ((AbstractFile) content).newDataArtifact(WEB_COOKIE_TYPE, attributes)
-				: content.newDataArtifact(WEB_COOKIE_TYPE, attributes, null);
+				? ((AbstractFile) content).newDataArtifact(TSK_WEB_COOKIE, attributes)
+				: content.newDataArtifact(TSK_WEB_COOKIE, attributes, null);
 		
 		// post artifact 
 		getSleuthkitCase().getBlackboard().postArtifact(cookieArtifact, getModuleName());
@@ -251,8 +251,8 @@ public final class WebBrowserArtifactsHelper extends ArtifactHelperBase {
 		
 		Content content = getContent();
 		BlackboardArtifact webDownloadArtifact = (content instanceof AbstractFile)
-				? ((AbstractFile) content).newDataArtifact(WEB_DOWNLOAD_TYPE, attributes)
-				: content.newDataArtifact(WEB_DOWNLOAD_TYPE, attributes, null);
+				? ((AbstractFile) content).newDataArtifact(TSK_WEB_DOWNLOAD, attributes)
+				: content.newDataArtifact(TSK_WEB_DOWNLOAD, attributes, null);
 		
 		// post artifact 
 		getSleuthkitCase().getBlackboard().postArtifact(webDownloadArtifact, getModuleName());
@@ -341,8 +341,8 @@ public final class WebBrowserArtifactsHelper extends ArtifactHelperBase {
 		// add artifact
 		Content content = getContent();
 		BlackboardArtifact webFormAddressArtifact = (content instanceof AbstractFile)
-				? ((AbstractFile) content).newDataArtifact(WEB_FORM_ADDRESS_TYPE, attributes)
-				: content.newDataArtifact(WEB_FORM_ADDRESS_TYPE, attributes, null);
+				? ((AbstractFile) content).newDataArtifact(TSK_WEB_FORM_ADDRESS, attributes)
+				: content.newDataArtifact(TSK_WEB_FORM_ADDRESS, attributes, null);
 		
 		// post artifact 
 		getSleuthkitCase().getBlackboard().postArtifact(webFormAddressArtifact, getModuleName());
@@ -407,8 +407,8 @@ public final class WebBrowserArtifactsHelper extends ArtifactHelperBase {
 
 		Content content = getContent();
 		BlackboardArtifact webFormAutofillArtifact = (content instanceof AbstractFile)
-				? ((AbstractFile) content).newDataArtifact(WEB_FORM_AUTOFILL_TYPE, attributes)
-				: content.newDataArtifact(WEB_FORM_AUTOFILL_TYPE, attributes, null);
+				? ((AbstractFile) content).newDataArtifact(TSK_WEB_FORM_AUTOFILL, attributes)
+				: content.newDataArtifact(TSK_WEB_FORM_AUTOFILL, attributes, null);
 		
 		// post artifact 
 		getSleuthkitCase().getBlackboard().postArtifact(webFormAutofillArtifact, getModuleName());
@@ -475,8 +475,8 @@ public final class WebBrowserArtifactsHelper extends ArtifactHelperBase {
 		
 		Content content = getContent();
 		BlackboardArtifact webHistoryArtifact = (content instanceof AbstractFile)
-				? ((AbstractFile) content).newDataArtifact(WEB_HISTORY_TYPE, attributes)
-				: content.newDataArtifact(WEB_HISTORY_TYPE, attributes, null);
+				? ((AbstractFile) content).newDataArtifact(TSK_WEB_HISTORY, attributes)
+				: content.newDataArtifact(TSK_WEB_HISTORY, attributes, null);
 		
 		// post artifact 
 		getSleuthkitCase().getBlackboard().postArtifact(webHistoryArtifact, getModuleName());
