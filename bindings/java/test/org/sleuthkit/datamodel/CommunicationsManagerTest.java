@@ -1408,8 +1408,12 @@ public class CommunicationsManagerTest {
 
 		try {
 			// Add Email artifact
+<<<<<<< HEAD
 			bbart = abstractFile.newArtifact(TSK_EMAIL_MSG.getTypeID());
 			bbart.addAttributes(bbattributes);
+=======
+			bbart = abstractFile.newDataArtifact(new BlackboardArtifact.Type(BlackboardArtifact.ARTIFACT_TYPE.TSK_EMAIL_MSG), bbattributes);
+>>>>>>> 7317-useDataArtifacts
 
 			// Add account relationships
 			commsMgr.addRelationships(senderAccountInstance, recipientAccountInstances, bbart, MESSAGE, dateSent);
@@ -1463,6 +1467,7 @@ public class CommunicationsManagerTest {
 	private static void addCalllogArtifact(AccountFileInstance deviceAccount, String name, String phoneNumber, long date, long duration, String direction, AbstractFile abstractFile) {
 
 		try {
+<<<<<<< HEAD
 			BlackboardArtifact bbart = abstractFile.newArtifact(TSK_CALLLOG.getTypeID()); //create a call log and then add attributes from result set.
 			if (direction.equalsIgnoreCase("outgoing")) { //NON-NLS
 				bbart.addAttribute(new BlackboardAttribute(TSK_PHONE_NUMBER_TO, MODULE_NAME, phoneNumber));
@@ -1473,7 +1478,22 @@ public class CommunicationsManagerTest {
 			bbart.addAttribute(new BlackboardAttribute(TSK_DATETIME_END, MODULE_NAME, duration + date));
 			bbart.addAttribute(new BlackboardAttribute(TSK_DIRECTION, MODULE_NAME, direction));
 			bbart.addAttribute(new BlackboardAttribute(TSK_NAME, MODULE_NAME, name));
+=======
+>>>>>>> 7317-useDataArtifacts
 
+			BlackboardAttribute attrPhonToOrFrom = direction.equalsIgnoreCase("outgoing")
+					? new BlackboardAttribute(TSK_PHONE_NUMBER_TO, MODULE_NAME, phoneNumber)
+					: new BlackboardAttribute(TSK_PHONE_NUMBER_FROM, MODULE_NAME, phoneNumber);
+
+			Collection<BlackboardAttribute> attributes = Arrays.asList(
+					attrPhonToOrFrom,
+					new BlackboardAttribute(TSK_DATETIME_START, MODULE_NAME, date),
+					new BlackboardAttribute(TSK_DATETIME_END, MODULE_NAME, duration + date),
+					new BlackboardAttribute(TSK_DIRECTION, MODULE_NAME, direction),
+					new BlackboardAttribute(TSK_NAME, MODULE_NAME, name)
+			);
+
+			BlackboardArtifact bbart = abstractFile.newDataArtifact(new BlackboardArtifact.Type(BlackboardArtifact.ARTIFACT_TYPE.TSK_CALLLOG), attributes); //create a call log and then add attributes from result set.
 			// Create a phone number account for the phone number
 			AccountFileInstance phoneNumAccount = commsMgr.createAccountFileInstance(PHONE, phoneNumber, MODULE_NAME, abstractFile);
 			List<AccountFileInstance> accountInstanceList = new ArrayList<AccountFileInstance>();
@@ -1492,6 +1512,7 @@ public class CommunicationsManagerTest {
 	private static void addMessageArtifact(AccountFileInstance deviceAccount, String phoneNumber, long date, String direction, String subject, String message, AbstractFile abstractFile) {
 
 		try {
+<<<<<<< HEAD
 			BlackboardArtifact bbart = abstractFile.newArtifact(TSK_MESSAGE.getTypeID()); //create Message artifact and then add attributes from result set.
 
 			if (direction.equalsIgnoreCase("incoming")) {
@@ -1499,12 +1520,23 @@ public class CommunicationsManagerTest {
 			} else {
 				bbart.addAttribute(new BlackboardAttribute(TSK_PHONE_NUMBER_TO, MODULE_NAME, phoneNumber));
 			}
+=======
+			BlackboardAttribute attrPhoneToOrFrom = (direction.equalsIgnoreCase("incoming"))
+					? new BlackboardAttribute(TSK_PHONE_NUMBER_FROM, MODULE_NAME, phoneNumber)
+					: new BlackboardAttribute(TSK_PHONE_NUMBER_TO, MODULE_NAME, phoneNumber);
 
-			bbart.addAttribute(new BlackboardAttribute(TSK_DIRECTION, MODULE_NAME, direction));
-			bbart.addAttribute(new BlackboardAttribute(TSK_DATETIME, MODULE_NAME, date));
-			bbart.addAttribute(new BlackboardAttribute(TSK_SUBJECT, MODULE_NAME, subject));
-			bbart.addAttribute(new BlackboardAttribute(TSK_TEXT, MODULE_NAME, message));
-			bbart.addAttribute(new BlackboardAttribute(TSK_MESSAGE_TYPE, MODULE_NAME, "SMS"));
+			Collection<BlackboardAttribute> attributes = Arrays.asList(
+					attrPhoneToOrFrom,
+					new BlackboardAttribute(TSK_DIRECTION, MODULE_NAME, direction),
+					new BlackboardAttribute(TSK_DATETIME, MODULE_NAME, date),
+					new BlackboardAttribute(TSK_SUBJECT, MODULE_NAME, subject),
+					new BlackboardAttribute(TSK_TEXT, MODULE_NAME, message),
+					new BlackboardAttribute(TSK_MESSAGE_TYPE, MODULE_NAME, "SMS")
+			);
+>>>>>>> 7317-useDataArtifacts
+
+			//create Message artifact and then add attributes from result set.
+			BlackboardArtifact bbart = abstractFile.newDataArtifact(new BlackboardArtifact.Type(BlackboardArtifact.ARTIFACT_TYPE.TSK_MESSAGE), attributes);
 
 			// Create a phone number account for the phone number
 			AccountFileInstance phoneNumAccount = commsMgr.createAccountFileInstance(PHONE, phoneNumber, MODULE_NAME, abstractFile);
@@ -1524,12 +1556,20 @@ public class CommunicationsManagerTest {
 	private static void addContactArtifact(AccountFileInstance deviceAccount, String name, String phoneNumber, String emailAddr, AbstractFile abstractFile) {
 
 		try {
+<<<<<<< HEAD
 			BlackboardArtifact bbart = abstractFile.newArtifact(TSK_CONTACT.getTypeID()); // create a CONTACT artifact
 
 			bbart.addAttribute(new BlackboardAttribute(TSK_NAME, MODULE_NAME, name));
+=======
+			Collection<BlackboardAttribute> attributes = Arrays.asList(
+					new BlackboardAttribute(TSK_NAME, MODULE_NAME, name),
+					new BlackboardAttribute(TSK_PHONE_NUMBER, MODULE_NAME, phoneNumber),
+					new BlackboardAttribute(TSK_EMAIL, MODULE_NAME, emailAddr)
+			);
+>>>>>>> 7317-useDataArtifacts
 
-			bbart.addAttribute(new BlackboardAttribute(TSK_PHONE_NUMBER, MODULE_NAME, phoneNumber));
-			bbart.addAttribute(new BlackboardAttribute(TSK_EMAIL, MODULE_NAME, emailAddr));
+			// create a CONTACT artifact
+			BlackboardArtifact bbart = abstractFile.newDataArtifact(new BlackboardArtifact.Type(BlackboardArtifact.ARTIFACT_TYPE.TSK_CONTACT), attributes);
 
 			// Create a phone number account for the phone number
 			AccountFileInstance phoneNumAccount = commsMgr.createAccountFileInstance(PHONE, phoneNumber, MODULE_NAME, abstractFile);

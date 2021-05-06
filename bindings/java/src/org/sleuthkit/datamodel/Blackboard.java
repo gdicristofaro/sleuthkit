@@ -164,6 +164,55 @@ public final class Blackboard {
 	 * @param justification   Justification, may be null or an empty string.
 	 * @param attributesList  Attributes to be attached to this analysis result
 	 *                        artifact.
+	 *
+	 * @return AnalysisResultAdded The analysis return added and the current
+	 *         aggregate score of content.
+	 *
+	 * @throws TskCoreException
+	 * @throws BlackboardException exception thrown if a critical error occurs
+	 *                             within TSK core
+	 */
+	public AnalysisResultAdded newAnalysisResult(BlackboardArtifact.Type artifactType, long objId, Long dataSourceObjId, Score score,
+			String conclusion, String configuration, String justification, Collection<BlackboardAttribute> attributesList)
+			throws BlackboardException, TskCoreException {
+
+		if (artifactType.getCategory() != BlackboardArtifact.Category.ANALYSIS_RESULT) {
+			throw new BlackboardException(String.format("Artifact type (name = %s) is not of Analysis Result category. ", artifactType.getTypeName()));
+		}
+
+		CaseDbTransaction transaction = caseDb.beginTransaction();
+		try {
+			AnalysisResultAdded analysisResult = newAnalysisResult(artifactType, objId, dataSourceObjId, score,
+					conclusion, configuration, justification, attributesList, transaction);
+			transaction.commit();
+			return analysisResult;
+		} catch (TskCoreException | BlackboardException ex) {
+			try {
+				transaction.rollback();
+			} catch (TskCoreException ex2) {
+				LOGGER.log(Level.SEVERE, "Failed to rollback transaction after exception. "
+						+ "Error invoking newAnalysisResult with dataSourceObjId: "
+						+ (dataSourceObjId == null ? "<null>" : dataSourceObjId)
+						+ ",  sourceObjId: " + objId, ex2);
+			}
+			throw ex;
+		}
+	}
+
+	/**
+	 * Adds new analysis result artifact.
+	 *
+	 * @param artifactType    Type of analysis result artifact to create.
+	 * @param objId           Object id of parent.
+	 * @param dataSourceObjId Data source object id, may be null.
+	 * @param score	          Score associated with this analysis result.
+	 * @param conclusion      Conclusion of the analysis, may be null or an
+	 *                        empty string.
+	 * @param configuration   Configuration associated with this analysis, may
+	 *                        be null or an empty string.
+	 * @param justification   Justification, may be null or an empty string.
+	 * @param attributesList  Attributes to be attached to this analysis result
+	 *                        artifact.
 	 * @param transaction     DB transaction to use.
 	 *
 	 * @return AnalysisResultAdded The analysis return added and the current
@@ -663,7 +712,9 @@ public final class Blackboard {
 	public List<BlackboardArtifact.Type> getArtifactTypesInUse(long dataSourceObjId) throws TskCoreException {
 
 		final String queryString = "SELECT DISTINCT arts.artifact_type_id AS artifact_type_id, "
-				+ "types.type_name AS type_name, types.display_name AS display_name "
+				+ "types.type_name AS type_name, "
+				+ "types.display_name AS display_name, "
+				+ "types.category_type AS category_type "
 				+ "FROM blackboard_artifact_types AS types "
 				+ "INNER JOIN blackboard_artifacts AS arts "
 				+ "ON arts.artifact_type_id = types.artifact_type_id "
@@ -677,7 +728,8 @@ public final class Blackboard {
 			List<BlackboardArtifact.Type> uniqueArtifactTypes = new ArrayList<>();
 			while (resultSet.next()) {
 				uniqueArtifactTypes.add(new BlackboardArtifact.Type(resultSet.getInt("artifact_type_id"),
-						resultSet.getString("type_name"), resultSet.getString("display_name")));
+						resultSet.getString("type_name"), resultSet.getString("display_name"), 
+						BlackboardArtifact.Category.fromID(resultSet.getInt("category_type"))));
 			}
 			return uniqueArtifactTypes;
 		} catch (SQLException ex) {
@@ -961,29 +1013,24 @@ public final class Blackboard {
 	 *                        belongs to, may be the same as the sourceObjId.
 	 *                        May be null.
 	 * @param attributes      The attributes. May be empty or null.
-	 * @param osAccount       The OS account associated with the artifact. May
-	 *                        be null.
+	 * @param osAccountId     The OS account id associated with the artifact.
+	 *                        May be null.
 	 *
 	 * @return DataArtifact A new data artifact.
 	 *
 	 * @throws TskCoreException If a critical error occurs within tsk core.
 	 */
 	public DataArtifact newDataArtifact(BlackboardArtifact.Type artifactType, long sourceObjId, Long dataSourceObjId,
-			Collection<BlackboardAttribute> attributes, OsAccount osAccount) throws TskCoreException {
+			Collection<BlackboardAttribute> attributes, Long osAccountId) throws TskCoreException {
 
 		if (artifactType.getCategory() != BlackboardArtifact.Category.DATA_ARTIFACT) {
 			throw new TskCoreException(String.format("Artifact type (name = %s) is not of Data Artifact category. ", artifactType.getTypeName()));
 		}
 
-		Long osAccountObjdId = null;
-		if (osAccount != null) {
-			osAccountObjdId = osAccount.getId();
-		}
-
 		CaseDbTransaction transaction = caseDb.beginTransaction();
 		try {
 			DataArtifact dataArtifact = newDataArtifact(artifactType, sourceObjId, dataSourceObjId,
-					attributes, osAccountObjdId, transaction);
+					attributes, osAccountId, transaction);
 			transaction.commit();
 			return dataArtifact;
 		} catch (TskCoreException ex) {

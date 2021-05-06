@@ -242,7 +242,11 @@ public class ArtifactTest {
 		
 		
 		// Test: add a new data artifact to the file
+<<<<<<< HEAD
 		DataArtifact dataArtifact1 = abcTextFile.newDataArtifact(BlackboardArtifact.Type.TSK_GPS_SEARCH, Collections.emptyList(), osAccount1);
+=======
+		DataArtifact dataArtifact1 = abcTextFile.newDataArtifact(new BlackboardArtifact.Type(BlackboardArtifact.ARTIFACT_TYPE.TSK_GPS_SEARCH), Collections.emptyList(), osAccount1.getId());
+>>>>>>> 7317-useDataArtifacts
         
 		OsAccountManager osAcctMgr = caseDB.getOsAccountManager();
 		
@@ -251,14 +255,23 @@ public class ArtifactTest {
 		
 		
 		// Test: add a second data artifact to file - associate it with a different account
+<<<<<<< HEAD
 		DataArtifact dataArtifact2 = abcTextFile.newDataArtifact(BlackboardArtifact.Type.TSK_CLIPBOARD_CONTENT, Collections.emptyList(), osAccount2);
+=======
+		DataArtifact dataArtifact2 = abcTextFile.newDataArtifact(new BlackboardArtifact.Type(BlackboardArtifact.ARTIFACT_TYPE.TSK_CLIPBOARD_CONTENT), Collections.emptyList(), osAccount2.getId());
+>>>>>>> 7317-useDataArtifacts
 		assertTrue(dataArtifact2.getOsAccountObjectId().isPresent());
 		assertTrue(osAcctMgr.getOsAccountByObjectId(dataArtifact2.getOsAccountObjectId().get()).getAddr().orElse("").equalsIgnoreCase(ownerUid2));
 				
 				
 		// and two more 
+<<<<<<< HEAD
 		DataArtifact dataArtifact3 = abcTextFile.newDataArtifact(BlackboardArtifact.Type.TSK_GPS_AREA, Collections.emptyList(), osAccount2);
 		DataArtifact dataArtifact4 = abcTextFile.newDataArtifact(BlackboardArtifact.Type.TSK_GPS_AREA, Collections.emptyList(), osAccount2);
+=======
+		DataArtifact dataArtifact3 = abcTextFile.newDataArtifact(new BlackboardArtifact.Type(BlackboardArtifact.ARTIFACT_TYPE.TSK_GPS_AREA), Collections.emptyList(), osAccount2.getId());
+		DataArtifact dataArtifact4 = abcTextFile.newDataArtifact(new BlackboardArtifact.Type(BlackboardArtifact.ARTIFACT_TYPE.TSK_GPS_AREA), Collections.emptyList(), osAccount2.getId());
+>>>>>>> 7317-useDataArtifacts
 
 		
 		// TEST: get all TSK_GPS_SEARCH data artifacts in the data source
@@ -302,6 +315,8 @@ public class ArtifactTest {
 		AnalysisResultAdded added4 = caseDB.getBlackboard().newAnalysisResult(analysisArtType, defTextFile.getId(), fs.getDataSource().getId(), new Score(Score.Significance.NOTABLE, Score.MethodCategory.AUTO), 
 				"", "", null, java.util.Collections.emptyList(), trans);
 		trans.commit();
+		
+		@SuppressWarnings("deprecation")
 		BlackboardArtifact bbArt2 = defTextFile.newArtifact(analysisArtType.getTypeID());
 		int analysisResultCount = 6;
 		
@@ -355,10 +370,12 @@ public class ArtifactTest {
 
 		// Create five data artifacts. Only three should create a row in tsk_data_artifacts.
 		DataArtifact dataArt1 = defTextFile.newDataArtifact(dataArtType, java.util.Collections.emptyList(), null);
-		DataArtifact dataArt2 = defTextFile.newDataArtifact(dataArtType, java.util.Collections.emptyList(), osAccount2);
+		DataArtifact dataArt2 = defTextFile.newDataArtifact(dataArtType, java.util.Collections.emptyList(), osAccount2.getId());
+		
+		@SuppressWarnings("deprecation")
 		BlackboardArtifact bbArt1 = defTextFile.newArtifact(dataArtType.getTypeID());
-		DataArtifact dataArt3 = defTextFile.newDataArtifact(dataArtType, java.util.Collections.emptyList(), osAccount2);
-		DataArtifact dataArt4 = caseDB.getBlackboard().newDataArtifact(dataArtType, defTextFile.getId(), fs.getDataSource().getId(), java.util.Collections.emptyList(), osAccount2);
+		DataArtifact dataArt3 = defTextFile.newDataArtifact(dataArtType, java.util.Collections.emptyList(), osAccount2.getId());
+		DataArtifact dataArt4 = caseDB.getBlackboard().newDataArtifact(dataArtType, defTextFile.getId(), fs.getDataSource().getId(), java.util.Collections.emptyList(), osAccount2.getId());
 		int dataArtifactCount = 5;
 		
 		// TEST: getDataArtifacts(artifact type id)
