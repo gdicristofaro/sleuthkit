@@ -282,14 +282,7 @@ public final class CommunicationArtifactsHelper extends ArtifactHelperBase {
 		BlackboardArtifact contactArtifact;
 		Collection<BlackboardAttribute> attributes = new ArrayList<>();
 
-<<<<<<< HEAD
-		// create TSK_CONTACT artifact
-		contactArtifact = getContent().newArtifact(BlackboardArtifact.Type.TSK_CONTACT.getTypeID());
-
-		// construct attributes
-=======
 		// create TSK_CONTACT artifact and construct attributes
->>>>>>> 7317-useDataArtifacts
 		addAttributeIfNotNull(ATTRIBUTE_TYPE.TSK_NAME, contactName, attributes);
 
 		addAttributeIfNotNull(ATTRIBUTE_TYPE.TSK_PHONE_NUMBER, phoneNumber, attributes);
@@ -519,12 +512,6 @@ public final class CommunicationArtifactsHelper extends ArtifactHelperBase {
 		// Created message artifact.  
 		Collection<BlackboardAttribute> attributes = new ArrayList<>();
 
-<<<<<<< HEAD
-		// create TSK_MESSAGE artifact
-		msgArtifact = getContent().newArtifact(BlackboardArtifact.Type.TSK_MESSAGE.getTypeID());
-
-=======
->>>>>>> 7317-useDataArtifacts
 		// construct attributes
 		attributes.add(new BlackboardAttribute(ATTRIBUTE_TYPE.TSK_MESSAGE_TYPE, getModuleName(), messageType));
 		addAttributeIfNotZero(ATTRIBUTE_TYPE.TSK_DATETIME, dateTime, attributes);
@@ -784,12 +771,7 @@ public final class CommunicationArtifactsHelper extends ArtifactHelperBase {
 			LOGGER.log(Level.WARNING, String.format("Failed to get/create self account with id %s", selfAccountId), ex);
 		}
 
-<<<<<<< HEAD
-		// Create TSK_CALLLOG artifact
-		callLogArtifact = getContent().newArtifact(BlackboardArtifact.Type.TSK_CALLLOG.getTypeID());
-=======
 		Collection<BlackboardAttribute> attributes = new ArrayList<>();
->>>>>>> 7317-useDataArtifacts
 
 		// Add basic attributes 
 		addAttributeIfNotZero(ATTRIBUTE_TYPE.TSK_DATETIME_START, startDateTime, attributes);
@@ -932,13 +914,7 @@ public final class CommunicationArtifactsHelper extends ArtifactHelperBase {
 		Collection<BlackboardAttribute> attributes = new ArrayList<>();
 		attributes.add(new BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_ASSOCIATED_ARTIFACT, this.getModuleName(), message.getArtifactID()));
 
-<<<<<<< HEAD
-		BlackboardArtifact bba = attachedFile.newArtifact(BlackboardArtifact.Type.TSK_ASSOCIATED_OBJECT.getTypeID());
-		bba.addAttributes(attributes); //write out to bb
-		return bba;
-=======
 		return attachedFile.newDataArtifact(ASSOCIATED_OBJ_TYPE, attributes);
->>>>>>> 7317-useDataArtifacts
 	}
 
 	/**

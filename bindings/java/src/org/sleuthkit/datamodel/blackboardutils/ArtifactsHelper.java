@@ -85,14 +85,7 @@ public final class ArtifactsHelper extends ArtifactHelperBase {
 			Collection<BlackboardAttribute> otherAttributesList) throws TskCoreException, BlackboardException {
 
 		Collection<BlackboardAttribute> attributes = new ArrayList<>();
-<<<<<<< HEAD
-
-		// create artifact
-		installedProgramArtifact = getContent().newArtifact(BlackboardArtifact.Type.TSK_INSTALLED_PROG.getTypeID());
-
-=======
 		
->>>>>>> 7317-useDataArtifacts
 		// construct attributes 
 		attributes.add(new BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_PROG_NAME, getModuleName(), programName));
 		addAttributeIfNotZero(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_DATETIME, dateInstalled, attributes);

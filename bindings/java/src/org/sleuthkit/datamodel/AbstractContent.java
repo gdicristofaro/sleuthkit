@@ -37,8 +37,6 @@ import org.sleuthkit.datamodel.SleuthkitCase.ObjectInfo;
  * content sub types
  */
 public abstract class AbstractContent implements Content {
-
-	private final static BlackboardArtifact.Type GEN_INFO_TYPE = new BlackboardArtifact.Type(ARTIFACT_TYPE.TSK_GEN_INFO);
 	public final static long UNKNOWN_ID = -1;
 	private final SleuthkitCase db;
 	private final long objId;
@@ -462,7 +460,7 @@ public abstract class AbstractContent implements Content {
 				Long dsObjId = getDataSource() != null ? getDataSource().getId() : null;
 
 				retArt = db.getBlackboard().newDataArtifact(
-						GEN_INFO_TYPE,
+						BlackboardArtifact.Type.TSK_GEN_INFO,
 						thisObjId,
 						dsObjId,
 						Collections.emptyList(),
@@ -529,7 +527,7 @@ public abstract class AbstractContent implements Content {
 
 	@Deprecated
 	@Override
-	@SuppressWarnings("Deprecation")
+	@SuppressWarnings("deprecation")
 	public long getArtifactsCount(BlackboardArtifact.ARTIFACT_TYPE type) throws TskCoreException {
 		return db.getBlackboardArtifactsCount(type, objId);
 	}

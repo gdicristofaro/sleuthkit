@@ -39,8 +39,6 @@ import org.sleuthkit.datamodel.SleuthkitCase.CaseDbTransaction;
  * This is a class that models reports.
  */
 public class Report implements Content {
-
-	private static final BlackboardArtifact.Type KEYWORD_HIT_TYPE = new BlackboardArtifact.Type(BlackboardArtifact.ARTIFACT_TYPE.TSK_KEYWORD_HIT);
 	static long ID_NOT_SET = -1;
 	private long objectId = ID_NOT_SET;
 	private final String pathAsString;
@@ -244,7 +242,7 @@ public class Report implements Content {
 
 		try {
 			return db.getBlackboard().newAnalysisResult(
-					KEYWORD_HIT_TYPE, fileObjId, dsObjId, Score.SCORE_UNKNOWN,
+					TSK_KEYWORD_HIT, fileObjId, dsObjId, Score.SCORE_UNKNOWN,
 					null, null, null, Collections.emptyList())
 					.getAnalysisResult();
 		} catch (BlackboardException ex) {

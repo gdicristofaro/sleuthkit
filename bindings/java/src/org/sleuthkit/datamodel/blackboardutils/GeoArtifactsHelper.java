@@ -111,15 +111,10 @@ public final class GeoArtifactsHelper extends ArtifactHelperBase {
 			attributes.addAll(moreAttributes);
 		}
 
-<<<<<<< HEAD
-		BlackboardArtifact artifact = getContent().newArtifact(BlackboardArtifact.Type.TSK_GPS_TRACK.getTypeID());
-		artifact.addAttributes(attributes);
-=======
 		Content content = getContent();
 		BlackboardArtifact artifact = (content instanceof AbstractFile)
 				? ((AbstractFile) content).newDataArtifact(GPS_TRACK_TYPE, attributes)
 				: content.newDataArtifact(GPS_TRACK_TYPE, attributes, null);
->>>>>>> 7317-useDataArtifacts
 
 		getSleuthkitCase().getBlackboard().postArtifact(artifact, getModuleName());
 
@@ -156,10 +151,6 @@ public final class GeoArtifactsHelper extends ArtifactHelperBase {
 			throw new IllegalArgumentException(String.format("addRoute was passed a null or empty list of waypoints"));
 		}
 
-<<<<<<< HEAD
-		BlackboardArtifact artifact = getContent().newArtifact(BlackboardArtifact.Type.TSK_GPS_ROUTE.getTypeID());
-=======
->>>>>>> 7317-useDataArtifacts
 		List<BlackboardAttribute> attributes = new ArrayList<>();
 
 		attributes.add(BlackboardJsonAttrUtil.toAttribute(WAYPOINTS_ATTR_TYPE, getModuleName(), wayPoints));
@@ -214,12 +205,6 @@ public final class GeoArtifactsHelper extends ArtifactHelperBase {
 		if (areaPoints == null || areaPoints.isEmpty()) {
 			throw new IllegalArgumentException(String.format("addArea was passed a null or empty list of points"));
 		}
-<<<<<<< HEAD
-		
-		BlackboardArtifact artifact = getContent().newArtifact(BlackboardArtifact.Type.TSK_GPS_AREA.getTypeID());
-=======
-
->>>>>>> 7317-useDataArtifacts
 		List<BlackboardAttribute> attributes = new ArrayList<>();
 		attributes.add(BlackboardJsonAttrUtil.toAttribute(AREAPOINTS_ATTR_TYPE, getModuleName(), areaPoints));
 

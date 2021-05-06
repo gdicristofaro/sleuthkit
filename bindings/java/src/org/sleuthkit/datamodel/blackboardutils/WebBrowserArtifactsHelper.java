@@ -106,12 +106,6 @@ public final class WebBrowserArtifactsHelper extends ArtifactHelperBase {
 
 		Collection<BlackboardAttribute> attributes = new ArrayList<>();
 
-<<<<<<< HEAD
-		// create artifact
-		bookMarkArtifact = getContent().newArtifact(BlackboardArtifact.Type.TSK_WEB_BOOKMARK.getTypeID());
-
-=======
->>>>>>> 7317-useDataArtifacts
 		// construct attributes 
 		attributes.add(new BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_URL, getModuleName(), url));
 
@@ -182,12 +176,6 @@ public final class WebBrowserArtifactsHelper extends ArtifactHelperBase {
 
 		Collection<BlackboardAttribute> attributes = new ArrayList<>();
 
-<<<<<<< HEAD
-		// create artifact
-		cookieArtifact = getContent().newArtifact(BlackboardArtifact.Type.TSK_WEB_COOKIE.getTypeID());
-
-=======
->>>>>>> 7317-useDataArtifacts
 		// construct attributes 
 		attributes.add(new BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_URL, getModuleName(), url));
 
@@ -250,12 +238,6 @@ public final class WebBrowserArtifactsHelper extends ArtifactHelperBase {
 
 		Collection<BlackboardAttribute> attributes = new ArrayList<>();
 
-<<<<<<< HEAD
-		// reate artifact
-		webDownloadArtifact = getContent().newArtifact(BlackboardArtifact.Type.TSK_WEB_DOWNLOAD.getTypeID());
-
-=======
->>>>>>> 7317-useDataArtifacts
 		// construct attributes 
 		attributes.add(new BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_PATH, getModuleName(), path));
 		attributes.add(new BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_URL, getModuleName(), url));
@@ -344,14 +326,7 @@ public final class WebBrowserArtifactsHelper extends ArtifactHelperBase {
 				LOGGER.log(Level.WARNING, String.format("Invalid account identifier %s", phoneNumber), ex);
 			}
 		}
-<<<<<<< HEAD
-
-		// create artifact
-		webFormAddressArtifact = getContent().newArtifact(BlackboardArtifact.Type.TSK_WEB_FORM_ADDRESS.getTypeID());
-
-=======
 		
->>>>>>> 7317-useDataArtifacts
 		// construct attributes 
 		attributes.add(new BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_NAME, getModuleName(), personName));
 
@@ -419,12 +394,6 @@ public final class WebBrowserArtifactsHelper extends ArtifactHelperBase {
 		
 		Collection<BlackboardAttribute> attributes = new ArrayList<>();
 
-<<<<<<< HEAD
-		// create artifact
-		webFormAutofillArtifact = getContent().newArtifact(BlackboardArtifact.Type.TSK_WEB_FORM_AUTOFILL.getTypeID());
-
-=======
->>>>>>> 7317-useDataArtifacts
 		// construct attributes 
 		attributes.add(new BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_NAME, getModuleName(), name));
 		attributes.add(new BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_VALUE, getModuleName(), value));
@@ -491,12 +460,6 @@ public final class WebBrowserArtifactsHelper extends ArtifactHelperBase {
 
 		Collection<BlackboardAttribute> attributes = new ArrayList<>();
 
-<<<<<<< HEAD
-		// create artifact
-		webHistoryArtifact = getContent().newArtifact(BlackboardArtifact.Type.TSK_WEB_HISTORY.getTypeID());
-
-=======
->>>>>>> 7317-useDataArtifacts
 		// construct attributes 
 		attributes.add(new BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_URL, getModuleName(), url));
 

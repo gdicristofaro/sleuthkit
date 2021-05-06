@@ -48,7 +48,6 @@ import static org.sleuthkit.datamodel.SleuthkitCase.closeStatement;
 public final class CommunicationsManager {
 
 	private static final Logger LOGGER = Logger.getLogger(CommunicationsManager.class.getName());
-	private static final BlackboardArtifact.Type ACCOUNT_TYPE = new BlackboardArtifact.Type(BlackboardArtifact.ARTIFACT_TYPE.TSK_ACCOUNT);
 	private final SleuthkitCase db;
 
 	private final Map<Account.Type, Integer> accountTypeToTypeIdMap
@@ -525,8 +524,8 @@ public final class CommunicationsManager {
 			);
 
 			accountArtifact = (sourceFile instanceof AbstractFile)
-					? ((AbstractFile) sourceFile).newDataArtifact(ACCOUNT_TYPE, attributes) 
-					: sourceFile.newDataArtifact(ACCOUNT_TYPE, attributes, null);
+					? ((AbstractFile) sourceFile).newDataArtifact(BlackboardArtifact.Type.TSK_ACCOUNT_TYPE, attributes) 
+					: sourceFile.newDataArtifact(BlackboardArtifact.Type.TSK_ACCOUNT_TYPE, attributes, null);
 			
 			try {
 				db.getBlackboard().postArtifact(accountArtifact, moduleName);

@@ -72,11 +72,8 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.postgresql.util.PSQLState;
-<<<<<<< HEAD
-=======
 import org.sleuthkit.datamodel.BlackboardArtifact.ARTIFACT_TYPE;
 import org.sleuthkit.datamodel.BlackboardArtifact.Category;
->>>>>>> 7317-useDataArtifacts
 import org.sleuthkit.datamodel.BlackboardAttribute.ATTRIBUTE_TYPE;
 import org.sleuthkit.datamodel.BlackboardAttribute.TSK_BLACKBOARD_ATTRIBUTE_VALUE_TYPE;
 import org.sleuthkit.datamodel.IngestJobInfo.IngestJobStatusType;
@@ -2394,26 +2391,6 @@ public class SleuthkitCase {
 			// were categorized as analysis results as of the 8.7 update to ensure consistency in
 			// case the built-in types change in a later release.
 			statement.execute("ALTER TABLE blackboard_artifact_types ADD COLUMN category_type INTEGER DEFAULT 0");
-<<<<<<< HEAD
-			String analysisTypeObjIdList = 
-				BlackboardArtifact.Type.TSK_KEYWORD_HIT.getTypeID() + ", " 
-				+ BlackboardArtifact.Type.TSK_HASHSET_HIT.getTypeID() + ", "
-				+ BlackboardArtifact.Type.TSK_INTERESTING_FILE_HIT.getTypeID() + ", "
-				+ BlackboardArtifact.ARTIFACT_TYPE.TSK_TAG_FILE.getTypeID() + ", "
-				+ BlackboardArtifact.ARTIFACT_TYPE.TSK_TAG_ARTIFACT.getTypeID() + ", "
-				+ BlackboardArtifact.Type.TSK_ENCRYPTION_DETECTED.getTypeID() + ", "
-				+ BlackboardArtifact.Type.TSK_EXT_MISMATCH_DETECTED.getTypeID() + ", "
-				+ BlackboardArtifact.Type.TSK_INTERESTING_ARTIFACT_HIT.getTypeID() + ", "
-				+ BlackboardArtifact.Type.TSK_FACE_DETECTED.getTypeID() + ", "
-				+ BlackboardArtifact.Type.TSK_ENCRYPTION_SUSPECTED.getTypeID() + ", "
-				+ BlackboardArtifact.Type.TSK_OBJECT_DETECTED.getTypeID() + ", "
-				+ BlackboardArtifact.Type.TSK_VERIFICATION_FAILED.getTypeID() + ", "
-				+ BlackboardArtifact.Type.TSK_DATA_SOURCE_USAGE.getTypeID() + ", "
-				+ BlackboardArtifact.Type.TSK_USER_CONTENT_SUSPECTED.getTypeID() + ", "
-				+ BlackboardArtifact.Type.TSK_WEB_ACCOUNT_TYPE.getTypeID() + ", "
-				+ BlackboardArtifact.Type.TSK_YARA_HIT.getTypeID() + ", "
-				+ BlackboardArtifact.Type.TSK_WEB_CATEGORIZATION.getTypeID();
-=======
 			String analysisTypeObjIdList
 					= BlackboardArtifact.ARTIFACT_TYPE.TSK_KEYWORD_HIT.getTypeID() + ", "
 					+ BlackboardArtifact.ARTIFACT_TYPE.TSK_HASHSET_HIT.getTypeID() + ", "
@@ -2432,7 +2409,6 @@ public class SleuthkitCase {
 					+ BlackboardArtifact.ARTIFACT_TYPE.TSK_WEB_ACCOUNT_TYPE.getTypeID() + ", "
 					+ BlackboardArtifact.ARTIFACT_TYPE.TSK_YARA_HIT.getTypeID() + ", "
 					+ BlackboardArtifact.ARTIFACT_TYPE.TSK_WEB_CATEGORIZATION.getTypeID();
->>>>>>> 7317-useDataArtifacts
 			statement.execute("UPDATE blackboard_artifact_types SET category_type = " + BlackboardArtifact.Category.ANALYSIS_RESULT.getID()
 					+ " WHERE artifact_type_id IN (" + analysisTypeObjIdList + ")");
 
@@ -5186,20 +5162,12 @@ public class SleuthkitCase {
 	 *
 	 * @throws TskCoreException exception thrown if a critical error occurs
 	 *                          within tsk core
-<<<<<<< HEAD
-	 * @deprecated Please use one of Blackboard.newDataArtifact or Blackboard.newAnalysisResult.
-	 */
-	@Deprecated
-	public BlackboardArtifact newBlackboardArtifact(BlackboardArtifact.ARTIFACT_TYPE artifactType, long obj_id) throws TskCoreException {
-		return newBlackboardArtifact(artifactType.getTypeID(), obj_id, artifactType.getLabel(), artifactType.getDisplayName());
-=======
 	 * @deprecated Please use newDataArtifact or newAnalysisResult.
 	 */
 	@Deprecated
 	@SuppressWarnings("deprecation")
 	public BlackboardArtifact newBlackboardArtifact(ARTIFACT_TYPE artifactType, long obj_id) throws TskCoreException {
 		return newBlackboardArtifact(artifactType.getTypeID(), obj_id);
->>>>>>> 7317-useDataArtifacts
 	}
 
 	/**
