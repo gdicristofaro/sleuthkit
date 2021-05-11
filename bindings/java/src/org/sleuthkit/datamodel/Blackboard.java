@@ -847,20 +847,22 @@ public final class Blackboard {
 			caseDb.releaseSingleUserCaseReadLock();
 		}
 	}
+	
+	
 
-	/*
+	/**
 	 * Determine if an artifact of a given type exists for given content with a
 	 * specific list of attributes.
 	 *
-	 * @param content The content whose artifacts need to be looked at. @param
-	 * artifactType The type of artifact to look for. @param attributesList The
-	 * list of attributes to look for.
+	 * @param content The content whose artifacts need to be looked at. 
+	 * @param artifactType The type of artifact to look for. 
+	 * @param attributesList The list of attributes to look for.
 	 *
 	 * @return True if the specific artifact exists; otherwise false.
 	 *
 	 * @throws TskCoreException If there is a problem getting artifacts or
 	 * attributes.
-	 * @deprecated Since 4.11.1 please use...TODO
+	 * @deprecated Please use the artifactExists method that takes a BlackboardArtifact.Type.
 	 */
 	@Deprecated
 	public boolean artifactExists(Content content, BlackboardArtifact.ARTIFACT_TYPE artifactType,
@@ -872,6 +874,53 @@ public final class Blackboard {
 		 * Get the content's artifacts.
 		 */
 		artifactsList = content.getArtifacts(artifactType);
+		if (artifactsList.isEmpty()) {
+			return false;
+		}
+
+		/*
+		 * Get each artifact's attributes and analyze them for matches.
+		 */
+		for (BlackboardArtifact artifact : artifactsList) {
+			if (attributesMatch(artifact.getAttributes(), attributesList)) {
+				/*
+				 * The exact artifact exists, so we don't need to look any
+				 * further.
+				 */
+				return true;
+			}
+		}
+
+		/*
+		 * None of the artifacts have the exact set of attribute type/value
+		 * combinations. The provided content does not have the artifact being
+		 * sought.
+		 */
+		return false;
+	}
+	
+	/**
+	 * Determine if an artifact of a given type exists for given content with a
+	 * specific list of attributes.
+	 *
+	 * @param content The content whose artifacts need to be looked at. 
+	 * @param artifactType The type of artifact to look for. 
+	 * @param attributesList The list of attributes to look for.
+	 *
+	 * @return True if the specific artifact exists; otherwise false.
+	 *
+	 * @throws TskCoreException If there is a problem getting artifacts or
+	 * attributes.
+	 */
+	public boolean artifactExists(Content content, BlackboardArtifact.Type artifactType,
+			Collection<BlackboardAttribute> attributesList) throws TskCoreException {
+
+		ArrayList<BlackboardArtifact> artifactsList;
+
+		/*
+		 * Get the content's artifacts.
+		 */
+		artifactsList = content.getArtifacts(artifactType.getTypeID());
 		if (artifactsList.isEmpty()) {
 			return false;
 		}

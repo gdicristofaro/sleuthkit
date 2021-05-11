@@ -1440,9 +1440,7 @@ public class BlackboardArtifact implements Content {
 	 * Enum for the standard artifact types. Refer to
 	 * http://sleuthkit.org/sleuthkit/docs/jni-docs/latest/artifact_catalog_page.html
 	 * for details on the standard attributes for each artifact type.
-	 * @deprecated Please use instances available in BlackboardArtifact.Type.
 	 */
-	@Deprecated
 	public enum ARTIFACT_TYPE implements SleuthkitVisitableItem {
 
 		/**
@@ -1892,9 +1890,7 @@ public class BlackboardArtifact implements Content {
 		 * @param label The type name
 		 *
 		 * @return The enum element.
-		 * @deprecated ARTIFACT_TYPE is deprecated. Please use SleuthkitCase.getBlackboardArtifactTypesInUse.
 		 */
-		@Deprecated
 		static public ARTIFACT_TYPE fromLabel(String label) {
 			for (ARTIFACT_TYPE value : ARTIFACT_TYPE.values()) {
 				if (value.getLabel().equals(label)) {
@@ -1913,9 +1909,7 @@ public class BlackboardArtifact implements Content {
 		 * @param id The type id.
 		 *
 		 * @return the corresponding enum
-		 * @deprecated ARTIFACT_TYPE is deprecated. Please use SleuthkitCase.getBlackboardArtifactTypesInUse.
 		 */
-		@Deprecated
 		static public ARTIFACT_TYPE fromID(int id) {
 			for (ARTIFACT_TYPE value : ARTIFACT_TYPE.values()) {
 				if (value.getTypeID() == id) {
