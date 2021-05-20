@@ -85,7 +85,7 @@ public final class TimelineManager {
 					.build();
 
 	// all known artifact type ids (used for determining if an artifact is standard or custom event)
-	private static final Set<Integer> ARTIFACT_TYPE_IDS = BlackboardArtifact.Type.STANDARD_TYPES.stream()
+	private static final Set<Integer> ARTIFACT_TYPE_IDS = BlackboardArtifact.Type.STANDARD_TYPES.values().stream()
 			.map(artType -> artType.getTypeID())
 			.collect(Collectors.toSet());
 

@@ -129,7 +129,7 @@ public class TimelineEventTypesTest {
 		mapping.put(BlackboardArtifact.Type.TSK_CALLLOG, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME_END, ATTRIBUTE_TYPE.TSK_DATETIME_START));
 		mapping.put(BlackboardArtifact.Type.TSK_PROG_RUN, EnumSet.of(ATTRIBUTE_TYPE.TSK_DATETIME));
 
-		Map<Integer, BlackboardArtifact.Type> artTypeIds = BlackboardArtifact.Type.STANDARD_TYPES.stream()
+		Map<Integer, BlackboardArtifact.Type> artTypeIds = BlackboardArtifact.Type.STANDARD_TYPES.values().stream()
 				.collect(Collectors.toMap((art) -> art.getTypeID(), (art) -> art));
 
 		Map<Integer, ATTRIBUTE_TYPE> attrTypeIds = Stream.of(ATTRIBUTE_TYPE.values())

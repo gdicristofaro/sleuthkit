@@ -603,7 +603,7 @@ public class SleuthkitCase {
 		acquireSingleUserCaseWriteLock();
 		try {
 			statement = connection.createStatement();
-			for (BlackboardArtifact.Type type : BlackboardArtifact.Type.STANDARD_TYPES) {
+			for (BlackboardArtifact.Type type : BlackboardArtifact.Type.STANDARD_TYPES.values()) {
 				try {
 					statement.execute("INSERT INTO blackboard_artifact_types (artifact_type_id, type_name, display_name, category_type) VALUES (" + type.getTypeID() + " , '" + type.getDisplayName() + "', '" + type.getDisplayName() + "' , " + type.getCategory().getID() + ")"); //NON-NLS
 				} catch (SQLException ex) {
@@ -619,7 +619,8 @@ public class SleuthkitCase {
 				this.typeNameToArtifactTypeMap.put(type.getDisplayName(), type);
 			}
 			if (dbType == DbType.POSTGRESQL) {
-				int newPrimaryKeyIndex = Collections.max(BlackboardArtifact.Type.STANDARD_TYPES, (a,b) -> Integer.compare(a.getTypeID(), b.getTypeID())).getTypeID() + 1;
+				int newPrimaryKeyIndex = Collections.max(BlackboardArtifact.Type.STANDARD_TYPES.values(), 
+						(a,b) -> Integer.compare(a.getTypeID(), b.getTypeID())).getTypeID() + 1;
 				statement.execute("ALTER SEQUENCE blackboard_artifact_types_artifact_type_id_seq RESTART WITH " + newPrimaryKeyIndex); //NON-NLS
 			}
 		} finally {
