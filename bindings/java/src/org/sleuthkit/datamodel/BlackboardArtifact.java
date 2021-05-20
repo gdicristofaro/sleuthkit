@@ -223,6 +223,7 @@ public class BlackboardArtifact implements Content {
 		return this.displayName;
 	}
 
+	
 	/**
 	 * Gets a short description for this artifact.
 	 *
@@ -233,45 +234,44 @@ public class BlackboardArtifact implements Content {
 	public String getShortDescription() throws TskCoreException {
 		BlackboardAttribute attr = null;
 		StringBuilder shortDescription = new StringBuilder("");
-		switch (ARTIFACT_TYPE.fromID(artifactTypeId)) {
-			case TSK_WEB_BOOKMARK:  //web_bookmark, web_cookie, web_download, and web_history are the same attribute for now
-			case TSK_WEB_COOKIE:
-			case TSK_WEB_DOWNLOAD:
-			case TSK_WEB_HISTORY:
-				attr = getAttribute(new BlackboardAttribute.Type(ATTRIBUTE_TYPE.TSK_DOMAIN));
-				break;
-			case TSK_KEYWORD_HIT:
-				attr = getAttribute(new BlackboardAttribute.Type(ATTRIBUTE_TYPE.TSK_KEYWORD_PREVIEW));
-				break;
-			case TSK_DEVICE_ATTACHED:
-				attr = getAttribute(new BlackboardAttribute.Type(ATTRIBUTE_TYPE.TSK_DEVICE_ID));
-				break;
-			case TSK_CONTACT: //contact, message, and calllog are the same attributes for now
-			case TSK_MESSAGE:
-			case TSK_CALLLOG:
-				//get the first of these attributes which exists and is non null
-				final ATTRIBUTE_TYPE[] typesThatCanHaveName = {ATTRIBUTE_TYPE.TSK_NAME,
-					ATTRIBUTE_TYPE.TSK_PHONE_NUMBER,
-					ATTRIBUTE_TYPE.TSK_PHONE_NUMBER_FROM,
-					ATTRIBUTE_TYPE.TSK_PHONE_NUMBER_TO,
-					ATTRIBUTE_TYPE.TSK_PHONE_NUMBER_HOME,
-					ATTRIBUTE_TYPE.TSK_PHONE_NUMBER_MOBILE,
-					ATTRIBUTE_TYPE.TSK_PHONE_NUMBER_OFFICE,
-					ATTRIBUTE_TYPE.TSK_EMAIL,
-					ATTRIBUTE_TYPE.TSK_EMAIL_FROM,
-					ATTRIBUTE_TYPE.TSK_EMAIL_TO,
-					ATTRIBUTE_TYPE.TSK_EMAIL_HOME,
-					ATTRIBUTE_TYPE.TSK_EMAIL_OFFICE}; //in the order we want to use them
-				for (ATTRIBUTE_TYPE t : typesThatCanHaveName) {
-					attr = getAttribute(new BlackboardAttribute.Type(t));
-					if (attr != null && !attr.getDisplayString().isEmpty()) {
-						break;
-					}
+
+		//web_bookmark, web_cookie, web_download, and web_history are the same attribute for now
+		if (artifactTypeId == BlackboardArtifact.Type.TSK_WEB_BOOKMARK.getTypeID()
+				|| artifactTypeId == BlackboardArtifact.Type.TSK_WEB_COOKIE.getTypeID()
+				|| artifactTypeId == BlackboardArtifact.Type.TSK_WEB_DOWNLOAD.getTypeID()
+				|| artifactTypeId == BlackboardArtifact.Type.TSK_WEB_HISTORY.getTypeID()) {
+			attr = getAttribute(new BlackboardAttribute.Type(ATTRIBUTE_TYPE.TSK_DOMAIN));
+			
+		} else if (artifactTypeId == BlackboardArtifact.Type.TSK_KEYWORD_HIT.getTypeID()) {
+			attr = getAttribute(new BlackboardAttribute.Type(ATTRIBUTE_TYPE.TSK_KEYWORD_PREVIEW));
+			
+		} else if (artifactTypeId == BlackboardArtifact.Type.TSK_DEVICE_ATTACHED.getTypeID()) {
+			attr = getAttribute(new BlackboardAttribute.Type(ATTRIBUTE_TYPE.TSK_DEVICE_ID));
+			
+		} else if (artifactTypeId == BlackboardArtifact.Type.TSK_CONTACT.getTypeID()
+				|| artifactTypeId == BlackboardArtifact.Type.TSK_MESSAGE.getTypeID()
+				|| artifactTypeId == BlackboardArtifact.Type.TSK_CALLLOG.getTypeID()) {
+			//get the first of these attributes which exists and is non null
+			final ATTRIBUTE_TYPE[] typesThatCanHaveName = {ATTRIBUTE_TYPE.TSK_NAME,
+				ATTRIBUTE_TYPE.TSK_PHONE_NUMBER,
+				ATTRIBUTE_TYPE.TSK_PHONE_NUMBER_FROM,
+				ATTRIBUTE_TYPE.TSK_PHONE_NUMBER_TO,
+				ATTRIBUTE_TYPE.TSK_PHONE_NUMBER_HOME,
+				ATTRIBUTE_TYPE.TSK_PHONE_NUMBER_MOBILE,
+				ATTRIBUTE_TYPE.TSK_PHONE_NUMBER_OFFICE,
+				ATTRIBUTE_TYPE.TSK_EMAIL,
+				ATTRIBUTE_TYPE.TSK_EMAIL_FROM,
+				ATTRIBUTE_TYPE.TSK_EMAIL_TO,
+				ATTRIBUTE_TYPE.TSK_EMAIL_HOME,
+				ATTRIBUTE_TYPE.TSK_EMAIL_OFFICE}; //in the order we want to use them
+			for (ATTRIBUTE_TYPE t : typesThatCanHaveName) {
+				attr = getAttribute(new BlackboardAttribute.Type(t));
+				if (attr != null && !attr.getDisplayString().isEmpty()) {
+					break;
 				}
-				break;
-			default:
-				break;
+			}
 		}
+
 		if (attr != null) {
 			shortDescription.append(attr.getAttributeType().getDisplayName()).append(": ").append(attr.getDisplayString());
 		} else {
