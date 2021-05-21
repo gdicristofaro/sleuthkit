@@ -23,7 +23,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -325,34 +324,12 @@ public abstract class AbstractContent implements Content {
 			return getGenInfoArtifact(true);
 		}
 		BlackboardArtifact.Type artifactType = db.getArtifactType(artifactTypeID);
-		if (artifactType == null) {
-			throw new TskCoreException("Unable to identify artifact type id of: " + artifactTypeID);
-		}
-
-		if (artifactType.getCategory() == null) {
-			throw new TskCoreException(String.format("Unable to determine category for artifact type: %s (id: %d)",
-					artifactType.getDisplayName() == null ? "<null>" : artifactType.getDisplayName(),
-					artifactType.getTypeID()));
-		}
-
-		long thisObjId = getId();
-		Long dsObjId = getDataSource() != null ? getDataSource().getId() : null;
-
 		switch (artifactType.getCategory()) {
 			case DATA_ARTIFACT:
-				return db.getBlackboard().newDataArtifact(artifactType, thisObjId, dsObjId, Collections.emptyList(), getOsAccountId());
+				return this.newDataArtifact(artifactType, Collections.emptyList());
 			case ANALYSIS_RESULT: {
-				try {
-					AnalysisResultAdded addedResult = db.getBlackboard().newAnalysisResult(
-							artifactType, thisObjId, dsObjId, Score.SCORE_UNKNOWN,
-							null, null, null,
-							Collections.emptyList());
-					return addedResult.getAnalysisResult();
-				} catch (BlackboardException ex) {
-					throw new TskCoreException(String.format("Unable to create analysis artifact type of %s (id: %d)",
-							artifactType.getDisplayName() == null ? "<null>" : artifactType.getDisplayName(),
-							artifactType.getTypeID()));
-				}
+				AnalysisResultAdded addedResult = this.newAnalysisResult(artifactType, Score.SCORE_UNKNOWN, null, null, null, Collections.emptyList());
+				return addedResult.getAnalysisResult();
 			}
 			default:
 				throw new TskCoreException(String.format("Unknown category: %s for artifact type id: %d",
@@ -378,12 +355,17 @@ public abstract class AbstractContent implements Content {
 
 	@Override
 	public DataArtifact newDataArtifact(BlackboardArtifact.Type artifactType, Collection<BlackboardAttribute> attributesList, Long osAccountId) throws TskCoreException {
-		DataArtifact artifact =  db.getBlackboard().newDataArtifact(artifactType, objId, this.getDataSource().getId(), attributesList, osAccountId);
+		DataArtifact artifact = db.getBlackboard().newDataArtifact(artifactType, objId, this.getDataSource().getId(), attributesList, osAccountId);
 
-		if(osAccountId != null) {
+		if (osAccountId != null) {
 			db.getOsAccountManager().newOsAccountInstance(osAccountId, getDataSource().getId(), OsAccountInstance.OsAccountInstanceType.LAUNCHED);
 		}
 		return artifact;
+	}
+
+	@Override
+	public DataArtifact newDataArtifact(BlackboardArtifact.Type artifactType, Collection<BlackboardAttribute> attributesList) throws TskCoreException {
+		return newDataArtifact(artifactType, attributesList, null);
 	}
 
 	@Deprecated
@@ -427,22 +409,6 @@ public abstract class AbstractContent implements Content {
 		return getGenInfoArtifact(true);
 	}
 
-	/**
-	 * Returns the OS Account associated with this content if this is a file.
-	 * Otherwise, returns null.
-	 *
-	 * @return The OS Account ID associated with this content if this is a file.
-	 *         Otherwise, returns null.
-	 *
-	 * @throws TskCoreException
-	 */
-	private Long getOsAccountId() throws TskCoreException {
-		Optional<Long> osAccountId = (this instanceof AbstractFile)
-				? ((AbstractFile) this).getOsAccountObjectId()
-				: Optional.empty();
-
-		return osAccountId.orElse(null);
-	}
 
 	@Override
 	public BlackboardArtifact getGenInfoArtifact(boolean create) throws TskCoreException {
@@ -455,15 +421,7 @@ public abstract class AbstractContent implements Content {
 		BlackboardArtifact retArt;
 		if (arts.isEmpty()) {
 			if (create) {
-				long thisObjId = getId();
-				Long dsObjId = getDataSource() != null ? getDataSource().getId() : null;
-
-				retArt = db.getBlackboard().newDataArtifact(
-						BlackboardArtifact.Type.TSK_GEN_INFO,
-						thisObjId,
-						dsObjId,
-						Collections.emptyList(),
-						getOsAccountId());
+				retArt = this.newDataArtifact(BlackboardArtifact.Type.TSK_GEN_INFO, Collections.emptyList());
 			} else {
 				return null;
 			}

@@ -515,17 +515,12 @@ public final class CommunicationsManager {
 
 		BlackboardArtifact accountArtifact = getAccountFileInstanceArtifact(accountType, accountUniqueID, sourceFile);
 		if (accountArtifact == null) {
-			long fileObjId = sourceFile.getId();
-			Long dsObjId = sourceFile.getDataSource() == null ? null : sourceFile.getDataSource().getId();
-
 			List<BlackboardAttribute> attributes = Arrays.asList(
 					new BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_ACCOUNT_TYPE, moduleName, accountType.getTypeName()),
 					new BlackboardAttribute(BlackboardAttribute.ATTRIBUTE_TYPE.TSK_ID, moduleName, accountUniqueID)
 			);
 
-			accountArtifact = (sourceFile instanceof AbstractFile)
-					? ((AbstractFile) sourceFile).newDataArtifact(BlackboardArtifact.Type.TSK_ACCOUNT, attributes) 
-					: sourceFile.newDataArtifact(BlackboardArtifact.Type.TSK_ACCOUNT, attributes, null);
+			accountArtifact = sourceFile.newDataArtifact(BlackboardArtifact.Type.TSK_ACCOUNT, attributes);
 			
 			try {
 				db.getBlackboard().postArtifact(accountArtifact, moduleName);

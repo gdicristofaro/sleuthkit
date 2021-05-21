@@ -292,9 +292,7 @@ public final class CommunicationArtifactsHelper extends ArtifactHelperBase {
 		attributes.addAll(additionalAttributes);
 		Content content = getContent();
 
-		contactArtifact = (content instanceof AbstractFile)
-				? ((AbstractFile) content).newDataArtifact(TSK_CONTACT, attributes)
-				: content.newDataArtifact(TSK_CONTACT, attributes, null);
+		contactArtifact = content.newDataArtifact(TSK_CONTACT, attributes);
 
 		// create an account for each specified contact method, and a relationship with self account
 		createContactMethodAccountAndRelationship(Account.Type.PHONE, phoneNumber, contactArtifact, 0);
@@ -606,9 +604,7 @@ public final class CommunicationArtifactsHelper extends ArtifactHelperBase {
 
 		// create TSK_MESSAGE artifact
 		Content content = getContent();
-		BlackboardArtifact msgArtifact = (content instanceof AbstractFile)
-				? ((AbstractFile) content).newDataArtifact(TSK_MESSAGE, attributes)
-				: content.newDataArtifact(TSK_MESSAGE, attributes, null);
+		BlackboardArtifact msgArtifact = content.newDataArtifact(TSK_MESSAGE, attributes);
 
 		// create sender/recipient relationships  
 		try {
@@ -850,9 +846,7 @@ public final class CommunicationArtifactsHelper extends ArtifactHelperBase {
 		attributes.addAll(otherAttributesList);
 		// Create TSK_CALLLOG artifact
 		Content content = getContent();
-		BlackboardArtifact callLogArtifact = (content instanceof AbstractFile)
-				? ((AbstractFile) content).newDataArtifact(TSK_CALLLOG, attributes)
-				: content.newDataArtifact(TSK_CALLLOG, attributes, null);
+		BlackboardArtifact callLogArtifact = content.newDataArtifact(TSK_CALLLOG, attributes);
 
 		callLogArtifact.addAttributes(attributes);
 

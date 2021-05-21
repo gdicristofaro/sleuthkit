@@ -91,9 +91,7 @@ public final class ArtifactsHelper extends ArtifactHelperBase {
 
 		// create artifact
 		Content content = getContent();
-		BlackboardArtifact installedProgramArtifact = (content instanceof AbstractFile)
-				? ((AbstractFile) content).newDataArtifact(BlackboardArtifact.Type.TSK_INSTALLED_PROG, attributes)
-				: content.newDataArtifact(BlackboardArtifact.Type.TSK_INSTALLED_PROG, attributes, null);
+		BlackboardArtifact installedProgramArtifact = content.newDataArtifact(BlackboardArtifact.Type.TSK_INSTALLED_PROG, attributes);
 		
 		// post artifact 
 		getSleuthkitCase().getBlackboard().postArtifact(installedProgramArtifact, getModuleName());
