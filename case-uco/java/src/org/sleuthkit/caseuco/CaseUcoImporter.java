@@ -26,10 +26,13 @@ import java.time.format.DateTimeParseException;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import static org.sleuthkit.caseuco.StandardAttributeTypes.TSK_TEXT;
@@ -92,9 +95,13 @@ import org.sleuthkit.datamodel.Pool;
 import org.sleuthkit.datamodel.Volume;
 import org.sleuthkit.datamodel.VolumeSystem;
 import org.sleuthkit.datamodel.AbstractFile;
+import org.sleuthkit.datamodel.AnalysisResult;
 import org.sleuthkit.datamodel.BlackboardArtifact;
 import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_KEYWORD_HIT;
 import org.sleuthkit.datamodel.BlackboardAttribute;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_ASSOCIATED_ARTIFACT;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_COMMENT;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DATETIME;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DATETIME_CREATED;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DATETIME_MODIFIED;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DESCRIPTION;
@@ -104,10 +111,12 @@ import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_NAME;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_ORGANIZATION;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_OWNER;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PROG_NAME;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_TL_EVENT_TYPE;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_USER_ID;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_VERSION;
 import org.sleuthkit.datamodel.Content;
 import org.sleuthkit.datamodel.DataArtifact;
+import org.sleuthkit.datamodel.Score;
 import org.sleuthkit.datamodel.TimelineEventType;
 import org.sleuthkit.datamodel.TskCoreException;
 import org.sleuthkit.datamodel.blackboardutils.attributes.BlackboardJsonAttrUtil;
@@ -179,6 +188,7 @@ public class CaseUcoImporter {
     private static final String DEFAULT_PARENT_CHILD_RELATIONSHIPS_VALUE = "true";
     private static final String CASE_UCO_SOURCE = "Case Uco Importer";
     private static final String CONTAINED_WITHIN_RELATIONSHIP = "contained-within";
+    private final Map<String, TimelineEventType> eventTypeMapping;
 
     private final Gson gson;
     private final SleuthkitCase sleuthkitCase;
@@ -191,6 +201,16 @@ public class CaseUcoImporter {
      */
     public CaseUcoImporter(SleuthkitCase sleuthkitCase) {
         this.sleuthkitCase = sleuthkitCase;
+        Map<String, TimelineEventType> eventTypeMapping = null;
+        try {
+            eventTypeMapping = sleuthkitCase.getTimelineManager().getEventTypes().stream()
+                    .collect(Collectors.toMap(evtType -> evtType.getDisplayName(), evtType -> evtType, (evt1, evt2) -> evt1));
+
+        } catch (TskCoreException ex) {
+            Logger.getLogger(CaseUcoImporter.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        this.eventTypeMapping = eventTypeMapping;
+
         this.gson = new GsonBuilder()
                 .registerTypeAdapter(Facet.class, new FacetDeserializer())
                 .create();
@@ -1349,6 +1369,23 @@ public class CaseUcoImporter {
     }
 
     private void assembleWebCache(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Optional<PathRelation> pathRelation = getCh
+        Trace export = new Trace(uuid)
+                .addBundle(new PathRelation()
+                        .setPath(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PATH)))
+                .addBundle(new URL()
+                        .setFullValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_URL)))
+                .addBundle(new HTTPConnection()
+                        .setHttpRequestHeader(getValueIfPresent(artifact, StandardAttributeTypes.TSK_HEADERS)));
+
+        export.setCreatedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_CREATED));
+
+        addToOutput(export, output);
+    }
+    
+    
+        private void assembleWebCache(Content content, UcoObject ucoObject) throws TskCoreException {
+        Optional<PathRelation> pathRelation = getCh
         Trace export = new Trace(uuid)
                 .addBundle(new PathRelation()
                         .setPath(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PATH)))
@@ -1362,65 +1399,102 @@ public class CaseUcoImporter {
         addToOutput(export, output);
     }
 
-    private void assembleTimelineEvent(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Action export = new Action(uuid)
-                .setStartTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME));
-
-        export.setDescription(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DESCRIPTION));
-
-        Long eventType = getLongIfPresent(artifact, StandardAttributeTypes.TSK_TL_EVENT_TYPE);
-        if (eventType != null) {
-            Optional<TimelineEventType> timelineEventType = artifact.getSleuthkitCase()
-                    .getTimelineManager()
-                    .getEventType(eventType);
-            if (timelineEventType.isPresent()) {
-                Trace actionArg = new BlankTraceNode()
-                        .addBundle(new ActionArgument()
-                                .setArgumentName(timelineEventType.get().getDisplayName()));
-
-                addToOutput(actionArg, output);
-                addToOutput(new BlankRelationshipNode()
-                        .setSource(actionArg.getId())
-                        .setTarget(export.getId()), output);
-            }
+    
+    private Optional<DataArtifact> importTimelineEvent(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        if (!(ucoObject instanceof Action)) {
+            return Optional.empty();
         }
 
-        addToOutput(export, output);
+        Action action = (Action) ucoObject;
+
+        Optional<BlackboardAttribute> dateTime = getTimeStampAttr(TSK_DATETIME, action.getStartTime());
+        Optional<BlackboardAttribute> description = getAttr(TSK_DESCRIPTION, action.getDescription());
+        Optional<BlackboardAttribute> tlType = getSourcesFromTarget(mapping, action.getId(), Trace.class).stream()
+                .flatMap(trace -> getChildren(trace, ActionArgument.class).stream())
+                .map(actionArgument -> {
+                    return Optional.ofNullable(actionArgument.getArgumentName())
+                            .flatMap(displayName -> Optional.ofNullable(eventTypeMapping.get(displayName)))
+                            .flatMap(evtType -> getAttr(TSK_TL_EVENT_TYPE, evtType.getTypeID()));
+                })
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .findFirst();
+
+        
+        List<BlackboardAttribute> attrs = Stream.of(dateTime, description, tlType)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .collect(Collectors.toList());
+        
+        return Optional.of(content.newDataArtifact(TSK_TL_EVENT, attrs));
     }
 
-    private void assembleClipboardContent(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Trace export = new Trace(uuid)
-                .addBundle(new Note()
-                        .setText(getValueIfPresent(artifact, StandardAttributeTypes.TSK_TEXT)));
 
-        addToOutput(export, output);
+    
+    private Optional<DataArtifact> importClipboardContent(Content content, UcoObject ucoObject) throws TskCoreException {
+        if (!(ucoObject instanceof Trace)) {
+            return Optional.empty();
+        }
+
+        Optional<BlackboardAttribute> tskText = getChild((Trace) ucoObject, Note.class)
+                .flatMap(nt -> getAttr(TSK_TEXT, nt.getText()));
+
+        if (!tskText.isPresent()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(content.newDataArtifact(TSK_CLIPBOARD_CONTENT, Arrays.asList(tskText.get())));
     }
 
-    private void assembleAssociatedObject(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Trace export = new Trace(uuid);
-        addToOutput(export, output);
+    private Optional<DataArtifact> importAssociatedObject(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        // this is risky, because we are looking for an empty trace
+        if (!(ucoObject instanceof Trace)) {
+            return Optional.empty();
+        }
 
-        BlackboardAttribute associatedArtifactID = artifact.getAttribute(StandardAttributeTypes.TSK_ASSOCIATED_ARTIFACT);
-        if (associatedArtifactID != null) {
-            long artifactID = associatedArtifactID.getValueLong();
-            BlackboardArtifact associatedArtifact = artifact.getSleuthkitCase().getArtifactByArtifactId(artifactID);
-            if (associatedArtifact != null) {
-                addToOutput(new BlankRelationshipNode()
-                        .setSource(uuid)
-                        .setTarget(this.uuidService.createUUID(associatedArtifact)), output);
-            }
+        List<Facet> facets = ((Trace) ucoObject).getHasPropertyBundle();
+        if (facets != null && facets.size() > 0) {
+            return Optional.empty();
+        }
+
+        List<String> relatedArtifacts = getTargetIdsFromSource(mapping, ucoObject.getId());
+
+        // NOTE: this assumes one and only one target for this source
+        if (relatedArtifacts.size() != 1) {
+            return Optional.empty();
+        }
+
+        Optional<BlackboardAttribute> attr = getTskObjByUcoId(mapping, relatedArtifacts.get(0), BlackboardArtifact.class)
+                .flatMap((art) -> getAttr(TSK_ASSOCIATED_ARTIFACT, art.getId()));
+
+        if (!attr.isPresent()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(content.newDataArtifact(TSK_ASSOCIATED_OBJECT, Arrays.asList(attr.get())));
+    }
+
+    private Optional<AnalysisResult> importUserContentSuspected(Content content, UcoObject ucoObject) throws TskCoreException {
+        if (!(ucoObject instanceof Assertion)) {
+            return Optional.empty();
+        } else {
+            Optional<BlackboardAttribute> comment = Optional.ofNullable(((Assertion) ucoObject).getStatement())
+                    .flatMap(cmmnt -> getAttr(TSK_COMMENT, cmmnt));
+
+            return Optional.of(content.newAnalysisResult(
+                    TSK_USER_CONTENT_SUSPECTED, Score.SCORE_UNKNOWN,
+                    null, null, null,
+                    Arrays.asList(comment.get()))
+                    .getAnalysisResult());
         }
     }
 
-    private void assembleUserContentSuspected(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Assertion export = new Assertion(uuid);
-        export.setStatement(getValueIfPresent(artifact, StandardAttributeTypes.TSK_COMMENT));
+    private Optional<DataArtifact> importMetadata(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        if (!(ucoObject instanceof Trace)) {
+            return Optional.empty();
+        }
 
-        addToOutput(export, output);
-    }
-
-
-    private Optional<DataArtifact> importMetadata(IdMapping mapping, Content content, Trace trace) throws TskCoreException {
+        Trace trace = (Trace) ucoObject;
         Optional<Application> applicationOpt = getChild(trace, Application.class);
         List<ContentData> contentDataList = getChildren(trace, ContentData.class);
 
@@ -1431,36 +1505,35 @@ public class CaseUcoImporter {
         Application application = applicationOpt.get();
 
         Map<BlackboardAttribute.Type, BlackboardAttribute> attributes = new HashMap<>();
-        
-        
+
         getAttr(TSK_PROG_NAME, application.getApplicationIdentifier())
                 .ifPresent((attr) -> attributes.put(attr.getAttributeType(), attr));
-        
+
         getAttr(TSK_VERSION, application.getVersion())
                 .ifPresent((attr) -> attributes.put(attr.getAttributeType(), attr));
 
         for (ContentData contentData : contentDataList) {
             getTimeStampAttr(TSK_DATETIME_CREATED, contentData.getCreatedTime())
                     .ifPresent((attr) -> attributes.put(attr.getAttributeType(), attr));
-            
+
             getTimeStampAttr(TSK_DATETIME_MODIFIED, contentData.getModifiedTime())
                     .ifPresent((attr) -> attributes.put(attr.getAttributeType(), attr));
-              
+
             getAttr(TSK_DESCRIPTION, contentData.getDescription())
                     .ifPresent((attr) -> attributes.put(attr.getAttributeType(), attr));
-            
+
             // get owner by looking up related owner object from owner id in content data
             Optional.ofNullable(contentData.getOwner())
                     .flatMap(ownerId -> getByUcoId(mapping, ownerId, Identity.class))
                     .flatMap(ownerObj -> getAttr(TSK_OWNER, ownerObj.getName()))
                     .ifPresent((attr) -> attributes.put(attr.getAttributeType(), attr));
-           
+
             if ("Last Printed".equalsIgnoreCase(contentData.getTag())) {
                 getTimeStampAttr(TSK_LAST_PRINTED_DATETIME, contentData.getModifiedTime())
-                    .ifPresent((attr) -> attributes.put(attr.getAttributeType(), attr));
-            }    
+                        .ifPresent((attr) -> attributes.put(attr.getAttributeType(), attr));
+            }
         }
-        
+
         getSourcesFromTarget(mapping, trace.getId(), Identity.class).stream()
                 .filter(author -> "Last Author".equalsIgnoreCase(author.getTag()))
                 .map(author -> getAttr(TSK_USER_ID, author.getName()))
@@ -1474,16 +1547,21 @@ public class CaseUcoImporter {
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .findFirst()
-                .ifPresent((attr) -> attributes.put(attr.getAttributeType(), attr));      
+                .ifPresent((attr) -> attributes.put(attr.getAttributeType(), attr));
 
-        
         return Optional.of(content.newDataArtifact(TSK_METADATA, new ArrayList<>(attributes.values())));
     }
 
-    private Optional<DataArtifact> importGpsTrack(Content content, Trace trace) throws TskCoreException {
+    private Optional<DataArtifact> importGpsTrack(Content content, UcoObject ucoObject) throws TskCoreException {
         // name for latLng in export
         // created time for track point?
         // in GeoTrackPoints.TrackPoint: no velocity, distanceFromHomePoint, distanceTraveled
+
+        if (!(ucoObject instanceof Trace)) {
+            return Optional.empty();
+        }
+
+        Trace trace = (Trace) ucoObject;
 
         String exportName = trace.getName();
         List<LatLongCoordinates> coordinates = getChildren(trace, LatLongCoordinates.class);
@@ -1497,7 +1575,7 @@ public class CaseUcoImporter {
 
         coordinates.stream()
                 .map(latLng -> new GeoTrackPoints.TrackPoint(latLng.getLatitude(), latLng.getLongitude(), latLng.getAltitude(),
-                latLng.getName(), null, null, null, getEpochTime(latLng.getCreatedTime())))
+                latLng.getName(), null, null, null, getEpochTime(latLng.getCreatedTime()).orElse(null)))
                 .forEach(points::addPoint);
 
         return Optional.of(content.newDataArtifact(TSK_GPS_TRACK,
@@ -1505,7 +1583,7 @@ public class CaseUcoImporter {
                         getAttr(TSK_NAME, exportName),
                         getAttr(TSK_PROG_NAME, application.map(Application::getApplicationIdentifier).orElse(null)),
                         getJsonAttr(TSK_GEO_TRACKPOINTS, points)
-                );
+                )));
     }
 
     private Optional<DataArtifact> importExtractedText(Content content, Trace trace) throws TskCoreException {
@@ -1542,13 +1620,20 @@ public class CaseUcoImporter {
                     .isDirectional(true), output);
         }
     }
-    
-    
+
+    private List<String> getTargetIdsFromSource(IdMapping idMap, String id) {
+
+    }
+
     private <T extends UcoObject> List<T> getSourcesFromTarget(IdMapping idMap, String id, Class<T> clazz) {
-        
+
     }
 
     private <T extends UcoObject> Optional<T> getByUcoId(IdMapping idMap, String id, Class<T> clazz) {
+
+    }
+
+    private <T extends Content> Optional<T> getTskObjByUcoId(IdMapping idMap, String id, Class<T> clazz) {
 
     }
 
@@ -1559,14 +1644,14 @@ public class CaseUcoImporter {
                 .collect(Collectors.toList());
     }
 
-    private <T extends Facet> List<T> getChildren(Trace parentTrace, Class<T> clazz) {
+    private <T extends UcoObject> List<T> getChildren(Trace parentTrace, Class<T> clazz) {
         return parentTrace.getHasPropertyBundle().stream()
                 .filter((facet) -> clazz.isInstance(facet))
                 .map((facet) -> (T) facet)
                 .collect(Collectors.toList());
     }
 
-    private <T extends Facet> Optional<T> getChild(Trace parentTrace, Class<T> clazz) {
+    private <T extends UcoObject> Optional<T> getChild(Trace parentTrace, Class<T> clazz) {
         return parentTrace.getHasPropertyBundle().stream()
                 .filter((facet) -> clazz.isInstance(facet))
                 .map((facet) -> (T) facet)
