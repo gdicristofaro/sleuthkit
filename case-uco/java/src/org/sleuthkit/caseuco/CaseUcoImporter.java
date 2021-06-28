@@ -1,0 +1,1624 @@
+/*
+ * Sleuth Kit CASE JSON LD Support
+ *
+ * Copyright 2020 Basis Technology Corp.
+ * Contact: carrier <at> sleuthkit <dot> org
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *	 http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.sleuthkit.caseuco;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import static org.sleuthkit.caseuco.StandardAttributeTypes.TSK_TEXT;
+
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_CONTACT;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_DEVICE_ATTACHED;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_EMAIL_MSG;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_EXTRACTED_TEXT;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_GEN_INFO;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_HASHSET_HIT;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_INSTALLED_PROG;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_INTERESTING_FILE_HIT;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_MESSAGE;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_METADATA_EXIF;
+import static org.sleuthkit.datamodel.BlackboardArtifact.ARTIFACT_TYPE.TSK_OS_ACCOUNT;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_OS_INFO;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_RECENT_OBJECT;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_SERVICE_ACCOUNT;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_WEB_BOOKMARK;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_WEB_COOKIE;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_WEB_DOWNLOAD;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_WEB_HISTORY;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_WEB_SEARCH_QUERY;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_ACCOUNT;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_BLUETOOTH_ADAPTER;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_BLUETOOTH_PAIRING;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_CALENDAR_ENTRY;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_CALLLOG;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_DATA_SOURCE_USAGE;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_DEVICE_INFO;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_ENCRYPTION_DETECTED;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_ENCRYPTION_SUSPECTED;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_GPS_BOOKMARK;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_GPS_LAST_KNOWN_LOCATION;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_GPS_ROUTE;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_GPS_SEARCH;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_INTERESTING_ARTIFACT_HIT;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_OBJECT_DETECTED;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_PROG_RUN;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_REMOTE_DRIVE;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_SIM_ATTACHED;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_SPEED_DIAL_ENTRY;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_VERIFICATION_FAILED;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_WIFI_NETWORK;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_WIFI_NETWORK_ADAPTER;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_CLIPBOARD_CONTENT;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_GPS_TRACK;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_METADATA;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_TL_EVENT;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_USER_CONTENT_SUSPECTED;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_WEB_CACHE;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_WEB_FORM_ADDRESS;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_ASSOCIATED_OBJECT;
+
+import org.sleuthkit.datamodel.ContentTag;
+import org.sleuthkit.datamodel.DataSource;
+import org.sleuthkit.datamodel.FileSystem;
+import org.sleuthkit.datamodel.Image;
+import org.sleuthkit.datamodel.Pool;
+import org.sleuthkit.datamodel.Volume;
+import org.sleuthkit.datamodel.VolumeSystem;
+import org.sleuthkit.datamodel.AbstractFile;
+import org.sleuthkit.datamodel.BlackboardArtifact;
+import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_KEYWORD_HIT;
+import org.sleuthkit.datamodel.BlackboardAttribute;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DATETIME_CREATED;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DATETIME_MODIFIED;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DESCRIPTION;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_GEO_TRACKPOINTS;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_LAST_PRINTED_DATETIME;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_NAME;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_ORGANIZATION;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_OWNER;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PROG_NAME;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_USER_ID;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_VERSION;
+import org.sleuthkit.datamodel.Content;
+import org.sleuthkit.datamodel.DataArtifact;
+import org.sleuthkit.datamodel.TimelineEventType;
+import org.sleuthkit.datamodel.TskCoreException;
+import org.sleuthkit.datamodel.blackboardutils.attributes.BlackboardJsonAttrUtil;
+import org.sleuthkit.datamodel.blackboardutils.attributes.GeoTrackPoints;
+import org.sleuthkit.datamodel.blackboardutils.attributes.MessageAttachments;
+import org.sleuthkit.datamodel.SleuthkitCase;
+import org.sleuthkit.datamodel.TskData.DbType;
+import sun.util.logging.PlatformLogger;
+
+/**
+ * Exports Sleuth Kit DataModel objects to CASE. The CASE JSON output is
+ * configured to be serialized with Gson. Each export method will produce a list
+ * of CASE JSON objects. Clients should loop through this list and write these
+ * objects to any OutputStream via Gson. See the Gson documentation for more
+ * information on object serialization.
+ *
+ * NOTE: The exporter behavior can be configured by passing configuration
+ * parameters in a custom Properties instance. A list of available configuration
+ * properties can be found in the README.md file.
+ */
+public class CaseUcoImporter {
+
+    private static class AddedItem {
+
+        private final long objectId;
+        private final String caseUcoId;
+        private final Content content;
+
+        public AddedItem(long objectId, String caseUcoId, Content content) {
+            this.objectId = objectId;
+            this.caseUcoId = caseUcoId;
+            this.content = content;
+        }
+
+        public long getObjectId() {
+            return objectId;
+        }
+
+        public String getCaseUcoId() {
+            return caseUcoId;
+        }
+
+        public Content getContent() {
+            return content;
+        }
+    }
+
+    private static class IdMapping {
+
+        private final Map<String, Long> mapping = new HashMap<String, Long>();
+
+        void addContent(String caseUcoId, Content content) {
+            mapping.put(caseUcoId, content.getId());
+        }
+
+        Long getId(String caseUcoId) {
+            return mapping.get(caseUcoId);
+        }
+    }
+
+    private static interface ArtifactContext {
+
+        Content getParentContent();
+
+        Long getDataSourceId();
+    }
+
+    private static final String INCLUDE_PARENT_CHILD_RELATIONSHIPS_PROP = "exporter.relationships.includeParentChild";
+    private static final String DEFAULT_PARENT_CHILD_RELATIONSHIPS_VALUE = "true";
+    private static final String CASE_UCO_SOURCE = "Case Uco Importer";
+    private static final String CONTAINED_WITHIN_RELATIONSHIP = "contained-within";
+
+    private final Gson gson;
+    private final SleuthkitCase sleuthkitCase;
+
+    /**
+     * Creates a default CaseUcoExporter.
+     *
+     * @param sleuthkitCase The sleuthkit case instance containing the data to
+     *                      be exported.
+     */
+    public CaseUcoImporter(SleuthkitCase sleuthkitCase) {
+        this.sleuthkitCase = sleuthkitCase;
+        this.gson = new GsonBuilder()
+                .registerTypeAdapter(Facet.class, new FacetDeserializer())
+                .create();
+    }
+
+    /**
+     * Exports the SleuthkitCase instance passed during initialization to CASE.
+     *
+     * @return A collection of CASE JSON elements
+     *
+     * @throws TskCoreException If an error occurred during database access.
+     */
+    public List<JsonElement> exportSleuthkitCase() throws TskCoreException {
+        List<JsonElement> output = new ArrayList<>();
+
+        String caseDirPath = sleuthkitCase
+                .getDbDirPath()
+                .replaceAll("\\\\", "/");
+
+        Trace export = new Trace(this.uuidService.createUUID(sleuthkitCase));
+
+        if (sleuthkitCase.getDatabaseType().equals(DbType.POSTGRESQL)) {
+            export.addBundle(new File()
+                    .setFilePath(caseDirPath)
+                    .setIsDirectory(true));
+        } else {
+            export.addBundle(new File()
+                    .setFilePath(caseDirPath + "/" + sleuthkitCase.getDatabaseName())
+                    .setIsDirectory(false));
+        }
+
+        addToOutput(export, output);
+        return output;
+    }
+
+    /**
+     * Exports an AbstractFile instance to CASE.
+     *
+     * @param file AbstractFile instance to export
+     *
+     * @return A collection of CASE JSON elements
+     *
+     * @throws TskCoreException If an error occurred during database access.
+     */
+    public List<JsonElement> exportAbstractFile(AbstractFile file) throws TskCoreException {
+        return exportAbstractFile(file, null);
+    }
+
+    /**
+     * Exports an AbstractFile instance to CASE.
+     *
+     * @param file      AbstractFile instance to export
+     * @param localPath The location of the file on secondary storage, somewhere
+     *                  other than the case. Example: local disk. This value
+     *                  will be ignored if null
+     *
+     * @return A collection of CASE JSON elements
+     *
+     * @throws TskCoreException If an error occurred during database access.
+     */
+    public List<JsonElement> exportAbstractFile(AbstractFile file, String localPath) throws TskCoreException {
+        List<JsonElement> output = new ArrayList<>();
+
+        ContentData contentData = new ContentData()
+                .setMimeType(file.getMIMEType())
+                .setSizeInBytes(file.getSize())
+                .setMd5Hash(file.getMd5Hash());
+
+        if (localPath != null) {
+            Trace localPathTrace = new BlankTraceNode()
+                    .addBundle(new URL()
+                            .setFullValue(localPath));
+            contentData.setDataPayloadReferenceUrl(localPathTrace);
+
+            addToOutput(localPathTrace, output);
+        }
+
+        File fileExport = new File()
+                .setAccessedTime(file.getAtime())
+                .setExtension(file.getNameExtension())
+                .setFileName(file.getName())
+                .setFilePath(file.getUniquePath())
+                .setIsDirectory(file.isDir())
+                .setSizeInBytes(file.getSize());
+        fileExport.setModifiedTime(file.getMtime());
+        fileExport.setCreatedTime(file.getCrtime());
+
+        Trace export = new Trace(this.uuidService.createUUID(file))
+                .addBundle(contentData)
+                .addBundle(fileExport);
+
+        addToOutput(export, output);
+        addParentChildRelationship(output, export.getId(),
+                this.uuidService.createUUID(file.getDataSource()));
+
+        return output;
+    }
+
+    /**
+     * Exports a ContentTag instance to CASE.
+     *
+     * @param contentTag ContentTag instance to export
+     *
+     * @return A collection of CASE JSON elements
+     *
+     * @throws TskCoreException If an error occurred during database access.
+     */
+    public List<JsonElement> exportContentTag(ContentTag contentTag) throws TskCoreException {
+        List<JsonElement> output = new ArrayList<>();
+
+        Annotation annotation = new Annotation(this.uuidService.createUUID(contentTag))
+                .addObject(this.uuidService.createUUID(contentTag.getContent()));
+        annotation.setDescription(contentTag.getComment());
+        annotation.addTag(contentTag.getName().getDisplayName());
+
+        addToOutput(annotation, output);
+        return output;
+    }
+
+    /**
+     * Exports a DataSource instance to CASE.
+     *
+     * @param dataSource DataSource instance to export
+     *
+     * @return A collection of CASE JSON elements
+     *
+     * @throws TskCoreException If an error occurred during database access.
+     */
+    public List<JsonElement> exportDataSource(DataSource dataSource) throws TskCoreException {
+        List<JsonElement> output = new ArrayList<>();
+
+        Trace export = new Trace(this.uuidService.createUUID(dataSource))
+                .addBundle(new File()
+                        .setFilePath(getDataSourcePath(dataSource)))
+                .addBundle(new ContentData()
+                        .setSizeInBytes(dataSource.getSize()));
+
+        addToOutput(export, output);
+        addParentChildRelationship(output, export.getId(),
+                this.uuidService.createUUID(this.sleuthkitCase));
+
+        return output;
+    }
+
+    String getDataSourcePath(DataSource dataSource) {
+        String dataSourcePath = "";
+        if (dataSource instanceof Image) {
+            String[] paths = ((Image) dataSource).getPaths();
+            if (paths.length > 0) {
+                dataSourcePath = paths[0];
+            }
+        } else {
+            dataSourcePath = dataSource.getName();
+        }
+        dataSourcePath = dataSourcePath.replaceAll("\\\\", "/");
+        return dataSourcePath;
+    }
+
+    /**
+     * Exports a FileSystem instance to CASE.
+     *
+     * @param fileSystem FileSystem instance to export
+     *
+     * @return A collection of CASE JSON elements
+     *
+     * @throws TskCoreException If an error occurred during database access.
+     */
+    public List<JsonElement> exportFileSystem(FileSystem fileSystem) throws TskCoreException {
+        List<JsonElement> output = new ArrayList<>();
+
+        Trace export = new Trace(this.uuidService.createUUID(fileSystem))
+                .addBundle(new org.sleuthkit.caseuco.FileSystem()
+                        .setFileSystemType(fileSystem.getFsType())
+                        .setCluserSize(fileSystem.getBlock_size()));
+
+        addToOutput(export, output);
+        addParentChildRelationship(output, export.getId(),
+                this.uuidService.createUUID(fileSystem.getParent()));
+
+        return output;
+    }
+
+    /**
+     * Exports a Pool instance to CASE.
+     *
+     * @param pool Pool instance to export
+     *
+     * @return A collection of CASE JSON elements
+     *
+     * @throws TskCoreException If an error occurred during database access.
+     */
+    public List<JsonElement> exportPool(Pool pool) throws TskCoreException {
+        List<JsonElement> output = new ArrayList<>();
+
+        Trace export = new Trace(this.uuidService.createUUID(pool))
+                .addBundle(new ContentData()
+                        .setSizeInBytes(pool.getSize()));
+
+        addToOutput(export, output);
+        addParentChildRelationship(output, export.getId(),
+                this.uuidService.createUUID(pool.getParent()));
+
+        return output;
+    }
+
+    /**
+     * Exports a Volume instance to CASE.
+     *
+     * @param volume Volume instance to export
+     *
+     * @return A collection of CASE JSON elements
+     *
+     * @throws TskCoreException If an error occurred during database access.
+     */
+    public List<JsonElement> exportVolume(Volume volume) throws TskCoreException {
+        List<JsonElement> output = new ArrayList<>();
+
+        Trace export = new Trace(this.uuidService.createUUID(volume));
+        org.sleuthkit.caseuco.Volume volumeFacet = new org.sleuthkit.caseuco.Volume();
+        if (volume.getLength() > 0) {
+            volumeFacet.setSectorSize(volume.getSize() / volume.getLength());
+        }
+        export.addBundle(volumeFacet)
+                .addBundle(new ContentData()
+                        .setSizeInBytes(volume.getSize()));
+
+        addToOutput(export, output);
+        addParentChildRelationship(output, export.getId(),
+                this.uuidService.createUUID(volume.getParent()));
+
+        return output;
+
+    }
+
+    /**
+     * Exports a VolumeSystem instance to CASE.
+     *
+     * @param volumeSystem VolumeSystem instance to export
+     *
+     * @return A collection of CASE JSON elements
+     *
+     * @throws TskCoreException If an error occurred during database access.
+     */
+    public List<JsonElement> exportVolumeSystem(VolumeSystem volumeSystem) throws TskCoreException {
+        List<JsonElement> output = new ArrayList<>();
+
+        Trace export = new Trace(this.uuidService.createUUID(volumeSystem))
+                .addBundle(new ContentData()
+                        .setSizeInBytes(volumeSystem.getSize()));
+
+        addToOutput(export, output);
+        addParentChildRelationship(output, export.getId(),
+                this.uuidService.createUUID(volumeSystem.getParent()));
+
+        return output;
+    }
+
+    /**
+     * Exports a BlackboardArtifact instance to CASE.
+     *
+     * @param artifact BlackboardArtifact instance to export
+     *
+     * @return A collection of CASE JSON elements
+     *
+     * @throws TskCoreException                            If an error occurred
+     *                                                     during database
+     *                                                     access.
+     * @throws ContentNotExportableException               if the content could
+     *                                                     not be exported, even
+     *                                                     in part, to CASE.
+     * @throws BlackboardJsonAttrUtil.InvalidJsonException If a JSON valued
+     *                                                     attribute could not
+     *                                                     be correctly
+     *                                                     deserialized.
+     */
+    @SuppressWarnings("deprecation")
+    public List<JsonElement> exportBlackboardArtifact(BlackboardArtifact artifact) throws TskCoreException,
+            ContentNotExportableException, BlackboardJsonAttrUtil.InvalidJsonException {
+        List<JsonElement> output = new ArrayList<>();
+
+        String uuid = this.uuidService.createUUID(artifact);
+        int artifactTypeId = artifact.getArtifactTypeID();
+
+        if (TSK_GEN_INFO.getTypeID() == artifactTypeId) {
+            assembleGenInfo(uuid, artifact, output);
+        } else if (TSK_WEB_BOOKMARK.getTypeID() == artifactTypeId) {
+            assembleWebBookmark(uuid, artifact, output);
+        } else if (TSK_WEB_COOKIE.getTypeID() == artifactTypeId) {
+            assembleWebCookie(uuid, artifact, output);
+        } else if (TSK_WEB_HISTORY.getTypeID() == artifactTypeId) {
+            assembleWebHistory(uuid, artifact, output);
+        } else if (TSK_WEB_DOWNLOAD.getTypeID() == artifactTypeId) {
+            assembleWebDownload(uuid, artifact, output);
+        } else if (TSK_RECENT_OBJECT.getTypeID() == artifactTypeId) {
+            assembleRecentObject(uuid, artifact, output);
+        } else if (TSK_INSTALLED_PROG.getTypeID() == artifactTypeId) {
+            assembleInstalledProg(uuid, artifact, output);
+        } else if (TSK_HASHSET_HIT.getTypeID() == artifactTypeId) {
+            assembleHashsetHit(uuid, artifact, output);
+        } else if (TSK_DEVICE_ATTACHED.getTypeID() == artifactTypeId) {
+            assembleDeviceAttached(uuid, artifact, output);
+        } else if (TSK_INTERESTING_FILE_HIT.getTypeID() == artifactTypeId) {
+            assembleInterestingFileHit(uuid, artifact, output);
+        } else if (TSK_EMAIL_MSG.getTypeID() == artifactTypeId) {
+            assembleEmailMessage(uuid, artifact, output);
+        } else if (TSK_EXTRACTED_TEXT.getTypeID() == artifactTypeId) {
+            assembleExtractedText(uuid, artifact, output);
+        } else if (TSK_WEB_SEARCH_QUERY.getTypeID() == artifactTypeId) {
+            assembleWebSearchQuery(uuid, artifact, output);
+        } else if (TSK_METADATA_EXIF.getTypeID() == artifactTypeId) {
+            assembleMetadataExif(uuid, artifact, output);
+        } else if (TSK_OS_INFO.getTypeID() == artifactTypeId) {
+            assembleOsInfo(uuid, artifact, output);
+        } else if (TSK_OS_ACCOUNT.getTypeID() == artifactTypeId) {
+            assembleOsAccount(uuid, artifact, output);
+        } else if (TSK_SERVICE_ACCOUNT.getTypeID() == artifactTypeId) {
+            assembleServiceAccount(uuid, artifact, output);
+        } else if (TSK_CONTACT.getTypeID() == artifactTypeId) {
+            assembleContact(uuid, artifact, output);
+        } else if (TSK_MESSAGE.getTypeID() == artifactTypeId) {
+            assembleMessage(uuid, artifact, output);
+        } else if (TSK_CALLLOG.getTypeID() == artifactTypeId) {
+            assembleCallog(uuid, artifact, output);
+        } else if (TSK_CALENDAR_ENTRY.getTypeID() == artifactTypeId) {
+            assembleCalendarEntry(uuid, artifact, output);
+        } else if (TSK_SPEED_DIAL_ENTRY.getTypeID() == artifactTypeId) {
+            assembleSpeedDialEntry(uuid, artifact, output);
+        } else if (TSK_BLUETOOTH_PAIRING.getTypeID() == artifactTypeId) {
+            assembleBluetoothPairing(uuid, artifact, output);
+        } else if (TSK_GPS_BOOKMARK.getTypeID() == artifactTypeId) {
+            assembleGpsBookmark(uuid, artifact, output);
+        } else if (TSK_GPS_LAST_KNOWN_LOCATION.getTypeID() == artifactTypeId) {
+            assembleGpsLastKnownLocation(uuid, artifact, output);
+        } else if (TSK_GPS_SEARCH.getTypeID() == artifactTypeId) {
+            assembleGpsSearch(uuid, artifact, output);
+        } else if (TSK_PROG_RUN.getTypeID() == artifactTypeId) {
+            assembleProgRun(uuid, artifact, output);
+        } else if (TSK_ENCRYPTION_DETECTED.getTypeID() == artifactTypeId) {
+            assembleEncryptionDetected(uuid, artifact, output);
+        } else if (TSK_INTERESTING_ARTIFACT_HIT.getTypeID() == artifactTypeId) {
+            assembleInterestingArtifact(uuid, artifact, output);
+        } else if (TSK_GPS_ROUTE.getTypeID() == artifactTypeId) {
+            assembleGPSRoute(uuid, artifact, output);
+        } else if (TSK_REMOTE_DRIVE.getTypeID() == artifactTypeId) {
+            assembleRemoteDrive(uuid, artifact, output);
+        } else if (TSK_ACCOUNT.getTypeID() == artifactTypeId) {
+            assembleAccount(uuid, artifact, output);
+        } else if (TSK_ENCRYPTION_SUSPECTED.getTypeID() == artifactTypeId) {
+            assembleEncryptionSuspected(uuid, artifact, output);
+        } else if (TSK_OBJECT_DETECTED.getTypeID() == artifactTypeId) {
+            assembleObjectDetected(uuid, artifact, output);
+        } else if (TSK_WIFI_NETWORK.getTypeID() == artifactTypeId) {
+            assembleWifiNetwork(uuid, artifact, output);
+        } else if (TSK_DEVICE_INFO.getTypeID() == artifactTypeId) {
+            assembleDeviceInfo(uuid, artifact, output);
+        } else if (TSK_SIM_ATTACHED.getTypeID() == artifactTypeId) {
+            assembleSimAttached(uuid, artifact, output);
+        } else if (TSK_BLUETOOTH_ADAPTER.getTypeID() == artifactTypeId) {
+            assembleBluetoothAdapter(uuid, artifact, output);
+        } else if (TSK_WIFI_NETWORK_ADAPTER.getTypeID() == artifactTypeId) {
+            assembleWifiNetworkAdapter(uuid, artifact, output);
+        } else if (TSK_VERIFICATION_FAILED.getTypeID() == artifactTypeId) {
+            assembleVerificationFailed(uuid, artifact, output);
+        } else if (TSK_DATA_SOURCE_USAGE.getTypeID() == artifactTypeId) {
+            assembleDataSourceUsage(uuid, artifact, output);
+        } else if (TSK_WEB_FORM_ADDRESS.getTypeID() == artifactTypeId) {
+            assembleWebFormAddress(uuid, artifact, output);
+        } else if (TSK_WEB_CACHE.getTypeID() == artifactTypeId) {
+            assembleWebCache(uuid, artifact, output);
+        } else if (TSK_TL_EVENT.getTypeID() == artifactTypeId) {
+            assembleTimelineEvent(uuid, artifact, output);
+        } else if (TSK_CLIPBOARD_CONTENT.getTypeID() == artifactTypeId) {
+            assembleClipboardContent(uuid, artifact, output);
+        } else if (TSK_ASSOCIATED_OBJECT.getTypeID() == artifactTypeId) {
+            assembleAssociatedObject(uuid, artifact, output);
+        } else if (TSK_USER_CONTENT_SUSPECTED.getTypeID() == artifactTypeId) {
+            assembleUserContentSuspected(uuid, artifact, output);
+        } else if (TSK_METADATA.getTypeID() == artifactTypeId) {
+            assembleMetadata(uuid, artifact, output);
+        } else if (TSK_GPS_TRACK.getTypeID() == artifactTypeId) {
+            assembleGpsTrack(uuid, artifact, output);
+        }
+
+        if (output.isEmpty()) {
+            throw new ContentNotExportableException(String.format(
+                    "Artifact [id:%d, type:%d] is either not supported "
+                    + "or did not have any exported attributes.", artifact.getId(), artifactTypeId));
+        }
+
+        addParentChildRelationship(output, uuid,
+                this.uuidService.createUUID(artifact.getParent()));
+
+        return output;
+    }
+
+    private void assembleWebCookie(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Trace export = new Trace(uuid)
+                .addBundle(new URL()
+                        .setFullValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_URL)))
+                .addBundle(new ContentData()
+                        .setDataPayload(getValueIfPresent(artifact, StandardAttributeTypes.TSK_VALUE)));
+
+        Trace cookieDomainNode = new BlankTraceNode()
+                .addBundle(new DomainName()
+                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DOMAIN)));
+
+        Trace applicationNode = new BlankTraceNode()
+                .addBundle(new Application()
+                        .setApplicationIdentifier(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PROG_NAME)));
+
+        BrowserCookie cookie = new BrowserCookie()
+                .setCookieName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_NAME))
+                .setCookieDomain(cookieDomainNode)
+                .setApplication(applicationNode)
+                .setAccessedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_START))
+                .setExpirationTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_END));
+        cookie.setCreatedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_CREATED));
+
+        export.addBundle(cookie);
+
+        addToOutput(export, output);
+        addToOutput(cookieDomainNode, output);
+        addToOutput(applicationNode, output);
+    }
+
+    private void assembleWebBookmark(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Trace applicationNode = new BlankTraceNode()
+                .addBundle(new Application()
+                        .setApplicationIdentifier(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PROG_NAME)));
+
+        BrowserBookmark bookmark = new BrowserBookmark()
+                .setUrlTargeted(getValueIfPresent(artifact, StandardAttributeTypes.TSK_URL))
+                .setApplication(applicationNode);
+        bookmark.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_NAME));
+        bookmark.setCreatedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_CREATED));
+
+        Trace export = new Trace(uuid)
+                .addBundle(bookmark)
+                .addBundle(new DomainName()
+                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DOMAIN)));
+
+        addToOutput(export, output);
+        addToOutput(applicationNode, output);
+    }
+
+    private void assembleGenInfo(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Hash hash = new Hash(uuid, getValueIfPresent(artifact, StandardAttributeTypes.TSK_HASH_PHOTODNA));
+        addToOutput(hash, output);
+    }
+
+    private void assembleWebHistory(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Trace userNameNode = new BlankTraceNode();
+
+        IdentityFacet identityFacet = new IdentityFacet();
+        identityFacet.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_USER_NAME));
+        userNameNode.addBundle(identityFacet);
+
+        Trace export = new Trace(uuid)
+                .addBundle(new URL()
+                        .setUserName(userNameNode)
+                        .setFullValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_URL)))
+                .addBundle(new DomainName()
+                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DOMAIN)))
+                .addBundle(new Application()
+                        .setApplicationIdentifier(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PROG_NAME)));
+
+        addToOutput(export, output);
+        addToOutput(userNameNode, output);
+    }
+
+    private void assembleWebDownload(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Trace export = new Trace(uuid)
+                .addBundle(new URL()
+                        .setFullValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_URL)))
+                .addBundle(new DomainName()
+                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DOMAIN)))
+                .addBundle(new File()
+                        .setFilePath(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PATH)))
+                .addBundle(new Application()
+                        .setApplicationIdentifier(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PROG_NAME)));
+        addToOutput(export, output);
+    }
+
+    private void assembleDeviceAttached(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Trace export = new Trace(uuid)
+                .addBundle(new Device()
+                        .setManufacturer(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DEVICE_MAKE))
+                        .setModel(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DEVICE_MODEL))
+                        .setId(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DEVICE_ID)))
+                .addBundle(new MACAddress()
+                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_MAC_ADDRESS)));
+
+        export.setCreatedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME));
+        addToOutput(export, output);
+    }
+
+    private void assembleHashsetHit(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Assertion export = new Assertion(uuid);
+        export.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_SET_NAME));
+        export.setStatement(getValueIfPresent(artifact, StandardAttributeTypes.TSK_COMMENT));
+
+        addToOutput(export, output);
+    }
+
+    private void assembleInstalledProg(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Trace export = new Trace(uuid)
+                .addBundle(new File()
+                        .setFilePath(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PATH_SOURCE)));
+        Software software = new Software();
+        software.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PROG_NAME));
+        export.addBundle(software);
+
+        File file = new File()
+                .setFilePath(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PATH));
+        file.setModifiedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME));
+
+        file.setCreatedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_CREATED));
+        export.addBundle(file);
+
+        addToOutput(export, output);
+    }
+
+    private void assembleRecentObject(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Trace export = new Trace(uuid)
+                .addBundle(new Application()
+                        .setApplicationIdentifier(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PROG_NAME)));
+
+        WindowsRegistryValue registryValue = new WindowsRegistryValue()
+                .setData(getValueIfPresent(artifact, StandardAttributeTypes.TSK_VALUE));
+        registryValue.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_NAME));
+
+        export.addBundle(registryValue);
+
+        File file = new File()
+                .setAccessedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_ACCESSED));
+        file.setCreatedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME));
+
+        export.addBundle(file);
+
+        addToOutput(export, output);
+
+        Assertion assertion = new BlankAssertionNode()
+                .setStatement(getValueIfPresent(artifact, StandardAttributeTypes.TSK_COMMENT));
+        addToOutput(assertion, output);
+        addToOutput(new BlankRelationshipNode()
+                .setSource(assertion.getId())
+                .setTarget(uuid), output);
+    }
+
+    private void assembleInterestingFileHit(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Assertion export = new Assertion(uuid);
+        export.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_SET_NAME));
+        export.setStatement(getValueIfPresent(artifact, StandardAttributeTypes.TSK_COMMENT));
+        addToOutput(export, output);
+    }
+
+    private void assembleEmailMessage(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Trace bccNode = new BlankTraceNode()
+                .addBundle(new EmailAddress()
+                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_EMAIL_BCC)));
+
+        Trace ccNode = new BlankTraceNode()
+                .addBundle(new EmailAddress()
+                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_EMAIL_CC)));
+
+        Trace fromNode = new BlankTraceNode()
+                .addBundle(new EmailAddress()
+                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_EMAIL_FROM)));
+
+        Trace headerRawNode = new BlankTraceNode()
+                .addBundle(new ExtractedString()
+                        .setStringValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_HEADERS)));
+
+        EmailMessage emailMessage = new EmailMessage();
+        String html = getValueIfPresent(artifact, StandardAttributeTypes.TSK_EMAIL_CONTENT_HTML);
+        String plain = getValueIfPresent(artifact, StandardAttributeTypes.TSK_EMAIL_CONTENT_PLAIN);
+        String rtf = getValueIfPresent(artifact, StandardAttributeTypes.TSK_EMAIL_CONTENT_RTF);
+
+        if (html != null) {
+            emailMessage.setBody(html);
+            emailMessage.setContentType("text/html");
+        } else if (rtf != null) {
+            emailMessage.setBody(rtf);
+            emailMessage.setContentType("text/rtf");
+        } else if (plain != null) {
+            emailMessage.setBody(plain);
+            emailMessage.setContentType("text/plain");
+        }
+
+        Trace export = new Trace(uuid)
+                .addBundle(emailMessage
+                        .setReceivedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_RCVD))
+                        .setSentTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_SENT))
+                        .setBcc(bccNode)
+                        .setCc(ccNode)
+                        .setFrom(fromNode)
+                        .setHeaderRaw(headerRawNode)
+                        .setMessageID(getValueIfPresent(artifact, StandardAttributeTypes.TSK_MSG_ID))
+                        .setSubject(getValueIfPresent(artifact, StandardAttributeTypes.TSK_SUBJECT)))
+                .addBundle(new File()
+                        .setFilePath(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PATH)));
+
+        addToOutput(export, output);
+        addToOutput(bccNode, output);
+        addToOutput(ccNode, output);
+        addToOutput(fromNode, output);
+        addToOutput(headerRawNode, output);
+    }
+
+    private void assembleWebSearchQuery(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Trace applicationNode = new BlankTraceNode()
+                .addBundle(new Application()
+                        .setApplicationIdentifier(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PROG_NAME)));
+
+        Trace export = new Trace(uuid)
+                .addBundle(new Note()
+                        .setText(getValueIfPresent(artifact, StandardAttributeTypes.TSK_TEXT)))
+                .addBundle(new Domain()
+                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DOMAIN)))
+                .addBundle(new ApplicationAccount()
+                        .setApplication(applicationNode));
+        addToOutput(export, output);
+        addToOutput(applicationNode, output);
+    }
+
+    private void assembleOsInfo(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Identity registeredOwnerNode = new BlankIdentityNode();
+        registeredOwnerNode.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_OWNER));
+        Identity registeredOrganizationNode = new BlankIdentityNode();
+        registeredOrganizationNode.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_ORGANIZATION));
+
+        OperatingSystem operatingSystem = new OperatingSystem()
+                .setInstallDate(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME))
+                .setVersion(getValueIfPresent(artifact, StandardAttributeTypes.TSK_VERSION));
+        operatingSystem.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PROG_NAME));
+
+        EnvironmentVariable envVar = new EnvironmentVariable()
+                .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_TEMP_DIR));
+        envVar.setName("TEMP");
+        Trace tempDirectoryNode = new BlankTraceNode()
+                .addBundle(envVar);
+
+        Trace export = new Trace(uuid)
+                .addBundle(operatingSystem)
+                .addBundle(new DomainName()
+                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DOMAIN)))
+                .addBundle(new Device()
+                        .setSerialNumber(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PRODUCT_ID)))
+                .addBundle(new ComputerSpecification()
+                        .setHostName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_NAME))
+                        .setProcessorArchitecture(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PROCESSOR_ARCHITECTURE)))
+                .addBundle(new WindowsComputerSpecification()
+                        .setRegisteredOrganization(registeredOrganizationNode)
+                        .setRegisteredOwner(registeredOwnerNode)
+                        .setWindowsTempDirectory(tempDirectoryNode));
+
+        addToOutput(export, output);
+        addToOutput(registeredOwnerNode, output);
+        addToOutput(registeredOrganizationNode, output);
+        addToOutput(tempDirectoryNode, output);
+    }
+
+    private void assembleOsAccount(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Trace export = new Trace(uuid)
+                .addBundle(new EmailAddress()
+                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_EMAIL)))
+                .addBundle(new PathRelation()
+                        .setPath(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PATH)))
+                .addBundle(new WindowsAccount()
+                        .setGroups(getValueIfPresent(artifact, StandardAttributeTypes.TSK_GROUPS)));
+
+        export.setTag(getValueIfPresent(artifact, StandardAttributeTypes.TSK_FLAG));
+
+        DigitalAccount digitalAccount = new DigitalAccount()
+                .setDisplayName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DISPLAY_NAME))
+                .setLastLoginTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_ACCESSED));
+        digitalAccount.setDescription(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DESCRIPTION));
+
+        export.addBundle(digitalAccount);
+
+        Identity ownerNode = new BlankIdentityNode();
+        ownerNode.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_NAME));
+
+        Account account = new Account()
+                .setAccountType(getValueIfPresent(artifact, StandardAttributeTypes.TSK_ACCOUNT_TYPE))
+                .setOwner(ownerNode)
+                .setAccountIdentifier(getValueIfPresent(artifact, StandardAttributeTypes.TSK_USER_ID));
+        account.setCreatedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_CREATED));
+
+        export.addBundle(account);
+
+        addToOutput(export, output);
+        addToOutput(ownerNode, output);
+    }
+
+    private void assembleServiceAccount(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Trace inReplyToNode = new BlankTraceNode()
+                .addBundle(new EmailAddress()
+                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_EMAIL_REPLYTO)));
+
+        Trace export = new Trace(uuid)
+                .addBundle(new Account()
+                        .setAccountType(getValueIfPresent(artifact, StandardAttributeTypes.TSK_CATEGORY)))
+                .addBundle(new DomainName()
+                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DOMAIN)))
+                .addBundle(new EmailMessage()
+                        .setInReplyTo(inReplyToNode))
+                .addBundle(new DigitalAccount()
+                        .setDisplayName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_NAME)))
+                .addBundle(new AccountAuthentication()
+                        .setPassword(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PASSWORD)))
+                .addBundle(new PathRelation()
+                        .setPath(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PATH)))
+                .addBundle(new URL()
+                        .setFullValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_URL)))
+                .addBundle(new DigitalAccount()
+                        .setDisplayName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_USER_NAME)));
+
+        export.setDescription(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DESCRIPTION));
+
+        Trace applicationNode = new BlankTraceNode()
+                .addBundle(new Application()
+                        .setApplicationIdentifier(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PROG_NAME)));
+
+        ApplicationAccount account = new ApplicationAccount()
+                .setApplication(applicationNode);
+        account.setId(getValueIfPresent(artifact, StandardAttributeTypes.TSK_USER_ID));
+        account.setCreatedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_CREATED));
+        export.addBundle(account);
+
+        addToOutput(export, output);
+        addToOutput(applicationNode, output);
+        addToOutput(inReplyToNode, output);
+    }
+
+    private void assembleContact(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        EmailAddress homeAddress = new EmailAddress()
+                .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_EMAIL_HOME));
+        homeAddress.setTag("Home");
+
+        EmailAddress workAddress = new EmailAddress()
+                .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_EMAIL_OFFICE));
+        workAddress.setTag("Work");
+
+        PhoneAccount homePhone = new PhoneAccount()
+                .setPhoneNumber(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PHONE_NUMBER_HOME));
+        homePhone.setTag("Home");
+
+        PhoneAccount workPhone = new PhoneAccount()
+                .setPhoneNumber(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PHONE_NUMBER_OFFICE));
+        workPhone.setTag("Work");
+
+        PhoneAccount mobilePhone = new PhoneAccount()
+                .setPhoneNumber(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PHONE_NUMBER_MOBILE));
+        mobilePhone.setTag("Mobile");
+
+        Trace export = new Trace(uuid)
+                .addBundle(new URL()
+                        .setFullValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_URL)))
+                .addBundle(new EmailAddress()
+                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_EMAIL)))
+                .addBundle(homeAddress)
+                .addBundle(workAddress)
+                .addBundle(new Contact()
+                        .setContactName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_NAME)))
+                .addBundle(new PhoneAccount()
+                        .setPhoneNumber(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PHONE_NUMBER)))
+                .addBundle(homePhone)
+                .addBundle(workPhone)
+                .addBundle(mobilePhone);
+        addToOutput(export, output);
+    }
+
+    private void assembleMessage(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException, BlackboardJsonAttrUtil.InvalidJsonException {
+        Trace applicationNode = new BlankTraceNode()
+                .addBundle(new Application()
+                        .setApplicationIdentifier(getValueIfPresent(artifact, StandardAttributeTypes.TSK_MESSAGE_TYPE)));
+
+        Trace senderNode = new BlankTraceNode()
+                .addBundle(new EmailAddress()
+                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_EMAIL_FROM)));
+
+        Trace fromNode = new BlankTraceNode()
+                .addBundle(new PhoneAccount()
+                        .setPhoneNumber(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PHONE_NUMBER_FROM)));
+
+        Trace toNode = new BlankTraceNode()
+                .addBundle(new PhoneAccount()
+                        .setPhoneNumber(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PHONE_NUMBER_TO)));
+
+        Trace export = new Trace(uuid)
+                .addBundle(new Message()
+                        .setMessageText(getValueIfPresent(artifact, StandardAttributeTypes.TSK_TEXT))
+                        .setApplication(applicationNode)
+                        .setSentTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME))
+                        .setMessageType(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DIRECTION))
+                        .setId(getValueIfPresent(artifact, StandardAttributeTypes.TSK_THREAD_ID)))
+                .addBundle(new EmailMessage()
+                        .setSender(senderNode))
+                .addBundle(new PhoneAccount()
+                        .setPhoneNumber(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PHONE_NUMBER)))
+                .addBundle(new PhoneCall()
+                        .setFrom(fromNode)
+                        .setTo(toNode))
+                .addBundle(new SMSMessage()
+                        .setIsRead(getIntegerIfPresent(artifact, StandardAttributeTypes.TSK_READ_STATUS)));
+
+        BlackboardAttribute attachments = artifact.getAttribute(StandardAttributeTypes.TSK_ATTACHMENTS);
+        if (attachments != null) {
+            MessageAttachments attachmentsContainer = BlackboardJsonAttrUtil.fromAttribute(attachments, MessageAttachments.class);
+            List<MessageAttachments.Attachment> tskAttachments = new ArrayList<>();
+            tskAttachments.addAll(attachmentsContainer.getUrlAttachments());
+            tskAttachments.addAll(attachmentsContainer.getFileAttachments());
+
+            tskAttachments.forEach((tskAttachment) -> {
+                export.addBundle(new Attachment()
+                        .setUrl(tskAttachment.getLocation())
+                );
+            });
+        }
+
+        addToOutput(export, output);
+        addToOutput(applicationNode, output);
+        addToOutput(senderNode, output);
+        addToOutput(fromNode, output);
+        addToOutput(toNode, output);
+    }
+
+    private void assembleMetadataExif(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Trace export = new Trace(uuid)
+                .addBundle(new Device()
+                        .setManufacturer(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DEVICE_MAKE))
+                        .setModel(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DEVICE_MODEL)))
+                .addBundle(new LatLongCoordinates()
+                        .setAltitude(getDoubleIfPresent(artifact, StandardAttributeTypes.TSK_GEO_ALTITUDE))
+                        .setLatitude(getDoubleIfPresent(artifact, StandardAttributeTypes.TSK_GEO_LATITUDE))
+                        .setLongitude(getDoubleIfPresent(artifact, StandardAttributeTypes.TSK_GEO_LONGITUDE)));
+
+        export.setCreatedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_CREATED));
+        addToOutput(export, output);
+    }
+
+    private void assembleCallog(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Trace fromNode = new BlankTraceNode()
+                .addBundle(new PhoneAccount()
+                        .setPhoneNumber(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PHONE_NUMBER_FROM)));
+
+        Trace toNode = new BlankTraceNode()
+                .addBundle(new PhoneAccount()
+                        .setPhoneNumber(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PHONE_NUMBER_TO)));
+
+        Trace export = new Trace(uuid)
+                .addBundle(new PhoneAccount()
+                        .setPhoneNumber(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PHONE_NUMBER)))
+                .addBundle(new PhoneCall()
+                        .setFrom(fromNode)
+                        .setTo(toNode)
+                        .setEndTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_END))
+                        .setStartTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_START))
+                        .setCallType(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DIRECTION)))
+                .addBundle(new Contact()
+                        .setContactName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_NAME)));
+
+        addToOutput(export, output);
+        addToOutput(toNode, output);
+        addToOutput(fromNode, output);
+    }
+
+    private void assembleCalendarEntry(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Trace export = new Trace(uuid);
+
+        CalendarEntry calendarEntry = new CalendarEntry()
+                .setStartTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_START))
+                .setEndTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_END))
+                .setEventType(getValueIfPresent(artifact, StandardAttributeTypes.TSK_CALENDAR_ENTRY_TYPE));
+
+        calendarEntry.setDescription(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DESCRIPTION));
+
+        BlankLocationNode locationNode = new BlankLocationNode();
+        locationNode.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_LOCATION));
+
+        calendarEntry.setLocation(locationNode);
+        export.addBundle(calendarEntry);
+
+        addToOutput(export, output);
+        addToOutput(locationNode, output);
+    }
+
+    private void assembleSpeedDialEntry(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Trace export = new Trace(uuid)
+                .addBundle(new Contact()
+                        .setContactName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_NAME_PERSON)))
+                .addBundle(new PhoneAccount()
+                        .setPhoneNumber(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PHONE_NUMBER)));
+
+        addToOutput(export, output);
+    }
+
+    private void assembleBluetoothPairing(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Trace export = new Trace(uuid)
+                .addBundle(new MobileDevice()
+                        .setBluetoothDeviceName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DEVICE_NAME)))
+                .addBundle(new MACAddress()
+                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_MAC_ADDRESS)));
+
+        export.setCreatedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME));
+        addToOutput(export, output);
+    }
+
+    private void assembleGpsBookmark(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Trace export = new Trace(uuid)
+                .addBundle(new LatLongCoordinates()
+                        .setAltitude(getDoubleIfPresent(artifact, StandardAttributeTypes.TSK_GEO_ALTITUDE))
+                        .setLatitude(getDoubleIfPresent(artifact, StandardAttributeTypes.TSK_GEO_LATITUDE))
+                        .setLongitude(getDoubleIfPresent(artifact, StandardAttributeTypes.TSK_GEO_LONGITUDE)))
+                .addBundle(new Application()
+                        .setApplicationIdentifier(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PROG_NAME)));
+
+        SimpleAddress simpleAddress = new SimpleAddress();
+        simpleAddress.setDescription(getValueIfPresent(artifact, StandardAttributeTypes.TSK_LOCATION));
+        export.addBundle(simpleAddress);
+
+        export.setCreatedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME));
+        export.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_NAME));
+        addToOutput(export, output);
+    }
+
+    private void assembleGpsLastKnownLocation(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Trace export = new Trace(uuid)
+                .addBundle(new LatLongCoordinates()
+                        .setAltitude(getDoubleIfPresent(artifact, StandardAttributeTypes.TSK_GEO_ALTITUDE))
+                        .setLatitude(getDoubleIfPresent(artifact, StandardAttributeTypes.TSK_GEO_LATITUDE))
+                        .setLongitude(getDoubleIfPresent(artifact, StandardAttributeTypes.TSK_GEO_LONGITUDE)));
+        export.setCreatedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME));
+
+        BlankLocationNode locationNode = new BlankLocationNode();
+        locationNode.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_NAME));
+
+        SimpleAddress simpleAddress = new SimpleAddress();
+        simpleAddress.setDescription(getValueIfPresent(artifact, StandardAttributeTypes.TSK_LOCATION));
+        export.addBundle(simpleAddress);
+
+        addToOutput(export, output);
+        addToOutput(locationNode, output);
+        addToOutput(new BlankRelationshipNode()
+                .setSource(locationNode.getId())
+                .setTarget(export.getId()), output);
+    }
+
+    private void assembleGpsSearch(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Trace export = new Trace(uuid)
+                .addBundle(new LatLongCoordinates()
+                        .setAltitude(getDoubleIfPresent(artifact, StandardAttributeTypes.TSK_GEO_ALTITUDE))
+                        .setLatitude(getDoubleIfPresent(artifact, StandardAttributeTypes.TSK_GEO_LATITUDE))
+                        .setLongitude(getDoubleIfPresent(artifact, StandardAttributeTypes.TSK_GEO_LONGITUDE)));
+        export.setCreatedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME));
+
+        BlankLocationNode locationNode = new BlankLocationNode();
+        locationNode.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_NAME));
+
+        SimpleAddress simpleAddress = new SimpleAddress();
+        simpleAddress.setDescription(getValueIfPresent(artifact, StandardAttributeTypes.TSK_LOCATION));
+        export.addBundle(simpleAddress);
+
+        addToOutput(export, output);
+        addToOutput(locationNode, output);
+        addToOutput(new BlankRelationshipNode()
+                .setSource(locationNode.getId())
+                .setTarget(export.getId()), output);
+    }
+
+    private void assembleProgRun(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Trace export = new Trace(uuid)
+                .addBundle(new Application()
+                        .setApplicationIdentifier(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PROG_NAME))
+                        .setNumberOfLaunches(getIntegerIfPresent(artifact, StandardAttributeTypes.TSK_COUNT)));
+
+        addToOutput(export, output);
+    }
+
+    private void assembleEncryptionDetected(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Assertion export = new Assertion(uuid)
+                .setStatement(getValueIfPresent(artifact, StandardAttributeTypes.TSK_COMMENT));
+
+        addToOutput(export, output);
+    }
+
+    private void assembleInterestingArtifact(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Assertion export = new Assertion(uuid);
+        export.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_SET_NAME));
+        export.setStatement(getValueIfPresent(artifact, StandardAttributeTypes.TSK_COMMENT));
+
+        Long associatedArtifactId = getLongIfPresent(artifact, StandardAttributeTypes.TSK_ASSOCIATED_ARTIFACT);
+        if (associatedArtifactId != null) {
+            BlackboardArtifact associatedArtifact = artifact.getSleuthkitCase().getBlackboardArtifact(associatedArtifactId);
+
+            addToOutput(new BlankRelationshipNode()
+                    .setSource(export.getId())
+                    .setTarget(this.uuidService.createUUID(associatedArtifact)), output);
+        }
+
+        addToOutput(export, output);
+    }
+
+    private void assembleGPSRoute(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Trace export = new Trace(uuid)
+                .addBundle(new Application()
+                        .setApplicationIdentifier(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PROG_NAME)));
+        export.setCreatedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME));
+
+        SimpleAddress simpleAddress = new SimpleAddress();
+        simpleAddress.setDescription(getValueIfPresent(artifact, StandardAttributeTypes.TSK_LOCATION));
+        export.addBundle(simpleAddress);
+
+        Location location = new BlankLocationNode();
+        location.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_NAME));
+
+        addToOutput(export, output);
+        addToOutput(location, output);
+        addToOutput(new BlankRelationshipNode()
+                .setSource(location.getId())
+                .setTarget(export.getId()), output);
+    }
+
+    private void assembleRemoteDrive(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Trace export = new Trace(uuid)
+                .addBundle(new PathRelation()
+                        .setPath(getValueIfPresent(artifact, StandardAttributeTypes.TSK_REMOTE_PATH)))
+                .addBundle(new PathRelation()
+                        .setPath(getValueIfPresent(artifact, StandardAttributeTypes.TSK_LOCAL_PATH)));
+
+        addToOutput(export, output);
+    }
+
+    private void assembleAccount(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Account account = new Account()
+                .setAccountType(getValueIfPresent(artifact, StandardAttributeTypes.TSK_ACCOUNT_TYPE))
+                .setAccountIdentifier(getValueIfPresent(artifact, StandardAttributeTypes.TSK_ID));
+
+        Account creditCardAccount = new Account()
+                .setAccountIdentifier(getValueIfPresent(artifact, StandardAttributeTypes.TSK_CARD_NUMBER));
+
+        creditCardAccount.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_SET_NAME));
+        Trace export = new Trace(uuid)
+                .addBundle(account)
+                .addBundle(creditCardAccount);
+
+        addToOutput(export, output);
+    }
+
+    private void assembleEncryptionSuspected(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Assertion export = new Assertion(uuid)
+                .setStatement(getValueIfPresent(artifact, StandardAttributeTypes.TSK_COMMENT));
+
+        addToOutput(export, output);
+    }
+
+    private void assembleObjectDetected(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Assertion export = new Assertion(uuid)
+                .setStatement(getValueIfPresent(artifact, StandardAttributeTypes.TSK_COMMENT));
+        export.setDescription(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DESCRIPTION));
+
+        addToOutput(export, output);
+    }
+
+    private void assembleWifiNetwork(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        WirelessNetworkConnection wirelessNetwork = new WirelessNetworkConnection()
+                .setSSID(getValueIfPresent(artifact, StandardAttributeTypes.TSK_SSID));
+
+        wirelessNetwork.setCreatedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME));
+
+        String networkId = getValueIfPresent(artifact, StandardAttributeTypes.TSK_DEVICE_ID);
+        if (networkId != null) {
+            wirelessNetwork.setId("_:" + networkId);
+        }
+
+        Trace export = new Trace(uuid)
+                .addBundle(wirelessNetwork);
+
+        addToOutput(export, output);
+    }
+
+    private void assembleDeviceInfo(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Trace export = new Trace(uuid)
+                .addBundle(new MobileDevice()
+                        .setIMEI(getValueIfPresent(artifact, StandardAttributeTypes.TSK_IMEI)))
+                .addBundle(new SIMCard()
+                        .setICCID(getValueIfPresent(artifact, StandardAttributeTypes.TSK_ICCID))
+                        .setIMSI(getValueIfPresent(artifact, StandardAttributeTypes.TSK_IMSI)));
+
+        addToOutput(export, output);
+    }
+
+    private void assembleSimAttached(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Trace export = new Trace(uuid)
+                .addBundle(new SIMCard()
+                        .setICCID(getValueIfPresent(artifact, StandardAttributeTypes.TSK_ICCID))
+                        .setIMSI(getValueIfPresent(artifact, StandardAttributeTypes.TSK_IMSI)));
+
+        addToOutput(export, output);
+    }
+
+    private void assembleBluetoothAdapter(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Trace export = new Trace(uuid)
+                .addBundle(new MACAddress()
+                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_MAC_ADDRESS)));
+
+        addToOutput(export, output);
+    }
+
+    private void assembleWifiNetworkAdapter(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Trace export = new Trace(uuid)
+                .addBundle(new MACAddress()
+                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_MAC_ADDRESS)));
+
+        addToOutput(export, output);
+    }
+
+    private void assembleVerificationFailed(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Assertion export = new Assertion(uuid);
+        export.setStatement(getValueIfPresent(artifact, StandardAttributeTypes.TSK_COMMENT));
+
+        addToOutput(export, output);
+    }
+
+    private void assembleDataSourceUsage(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Trace export = new Trace(uuid);
+        export.setDescription(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DESCRIPTION));
+
+        addToOutput(export, output);
+    }
+
+    private void assembleWebFormAddress(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        SimpleAddress simpleAddress = new SimpleAddress();
+        simpleAddress.setDescription(getValueIfPresent(artifact, StandardAttributeTypes.TSK_LOCATION));
+
+        Trace export = new Trace(uuid)
+                .addBundle(simpleAddress)
+                .addBundle(new EmailAddress()
+                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_EMAIL)))
+                .addBundle(new PhoneAccount()
+                        .setPhoneNumber(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PHONE_NUMBER)));
+
+        export.setCreatedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_ACCESSED));
+        export.setModifiedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_MODIFIED));
+
+        Person person = new BlankPersonNode();
+        person.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_NAME_PERSON));
+
+        addToOutput(export, output);
+        addToOutput(person, output);
+        addToOutput(new BlankRelationshipNode()
+                .setSource(person.getId())
+                .setTarget(export.getId()), output);
+
+    }
+
+    private void assembleWebCache(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Trace export = new Trace(uuid)
+                .addBundle(new PathRelation()
+                        .setPath(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PATH)))
+                .addBundle(new URL()
+                        .setFullValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_URL)))
+                .addBundle(new HTTPConnection()
+                        .setHttpRequestHeader(getValueIfPresent(artifact, StandardAttributeTypes.TSK_HEADERS)));
+
+        export.setCreatedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_CREATED));
+
+        addToOutput(export, output);
+    }
+
+    private void assembleTimelineEvent(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Action export = new Action(uuid)
+                .setStartTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME));
+
+        export.setDescription(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DESCRIPTION));
+
+        Long eventType = getLongIfPresent(artifact, StandardAttributeTypes.TSK_TL_EVENT_TYPE);
+        if (eventType != null) {
+            Optional<TimelineEventType> timelineEventType = artifact.getSleuthkitCase()
+                    .getTimelineManager()
+                    .getEventType(eventType);
+            if (timelineEventType.isPresent()) {
+                Trace actionArg = new BlankTraceNode()
+                        .addBundle(new ActionArgument()
+                                .setArgumentName(timelineEventType.get().getDisplayName()));
+
+                addToOutput(actionArg, output);
+                addToOutput(new BlankRelationshipNode()
+                        .setSource(actionArg.getId())
+                        .setTarget(export.getId()), output);
+            }
+        }
+
+        addToOutput(export, output);
+    }
+
+    private void assembleClipboardContent(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Trace export = new Trace(uuid)
+                .addBundle(new Note()
+                        .setText(getValueIfPresent(artifact, StandardAttributeTypes.TSK_TEXT)));
+
+        addToOutput(export, output);
+    }
+
+    private void assembleAssociatedObject(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Trace export = new Trace(uuid);
+        addToOutput(export, output);
+
+        BlackboardAttribute associatedArtifactID = artifact.getAttribute(StandardAttributeTypes.TSK_ASSOCIATED_ARTIFACT);
+        if (associatedArtifactID != null) {
+            long artifactID = associatedArtifactID.getValueLong();
+            BlackboardArtifact associatedArtifact = artifact.getSleuthkitCase().getArtifactByArtifactId(artifactID);
+            if (associatedArtifact != null) {
+                addToOutput(new BlankRelationshipNode()
+                        .setSource(uuid)
+                        .setTarget(this.uuidService.createUUID(associatedArtifact)), output);
+            }
+        }
+    }
+
+    private void assembleUserContentSuspected(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+        Assertion export = new Assertion(uuid);
+        export.setStatement(getValueIfPresent(artifact, StandardAttributeTypes.TSK_COMMENT));
+
+        addToOutput(export, output);
+    }
+
+
+    private Optional<DataArtifact> importMetadata(IdMapping mapping, Content content, Trace trace) throws TskCoreException {
+        Optional<Application> applicationOpt = getChild(trace, Application.class);
+        List<ContentData> contentDataList = getChildren(trace, ContentData.class);
+
+        if (contentDataList.size() < 1 || !applicationOpt.isPresent()) {
+            return Optional.empty();
+        }
+
+        Application application = applicationOpt.get();
+
+        Map<BlackboardAttribute.Type, BlackboardAttribute> attributes = new HashMap<>();
+        
+        
+        getAttr(TSK_PROG_NAME, application.getApplicationIdentifier())
+                .ifPresent((attr) -> attributes.put(attr.getAttributeType(), attr));
+        
+        getAttr(TSK_VERSION, application.getVersion())
+                .ifPresent((attr) -> attributes.put(attr.getAttributeType(), attr));
+
+        for (ContentData contentData : contentDataList) {
+            getTimeStampAttr(TSK_DATETIME_CREATED, contentData.getCreatedTime())
+                    .ifPresent((attr) -> attributes.put(attr.getAttributeType(), attr));
+            
+            getTimeStampAttr(TSK_DATETIME_MODIFIED, contentData.getModifiedTime())
+                    .ifPresent((attr) -> attributes.put(attr.getAttributeType(), attr));
+              
+            getAttr(TSK_DESCRIPTION, contentData.getDescription())
+                    .ifPresent((attr) -> attributes.put(attr.getAttributeType(), attr));
+            
+            // get owner by looking up related owner object from owner id in content data
+            Optional.ofNullable(contentData.getOwner())
+                    .flatMap(ownerId -> getByUcoId(mapping, ownerId, Identity.class))
+                    .flatMap(ownerObj -> getAttr(TSK_OWNER, ownerObj.getName()))
+                    .ifPresent((attr) -> attributes.put(attr.getAttributeType(), attr));
+           
+            if ("Last Printed".equalsIgnoreCase(contentData.getTag())) {
+                getTimeStampAttr(TSK_LAST_PRINTED_DATETIME, contentData.getModifiedTime())
+                    .ifPresent((attr) -> attributes.put(attr.getAttributeType(), attr));
+            }    
+        }
+        
+        getSourcesFromTarget(mapping, trace.getId(), Identity.class).stream()
+                .filter(author -> "Last Author".equalsIgnoreCase(author.getTag()))
+                .map(author -> getAttr(TSK_USER_ID, author.getName()))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .findFirst()
+                .ifPresent((attr) -> attributes.put(attr.getAttributeType(), attr));
+
+        getSourcesFromTarget(mapping, trace.getId(), Organization.class).stream()
+                .map(organization -> getAttr(TSK_ORGANIZATION, organization.getName()))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .findFirst()
+                .ifPresent((attr) -> attributes.put(attr.getAttributeType(), attr));      
+
+        
+        return Optional.of(content.newDataArtifact(TSK_METADATA, new ArrayList<>(attributes.values())));
+    }
+
+    private Optional<DataArtifact> importGpsTrack(Content content, Trace trace) throws TskCoreException {
+        // name for latLng in export
+        // created time for track point?
+        // in GeoTrackPoints.TrackPoint: no velocity, distanceFromHomePoint, distanceTraveled
+
+        String exportName = trace.getName();
+        List<LatLongCoordinates> coordinates = getChildren(trace, LatLongCoordinates.class);
+        Optional<Application> application = getChild(trace, Application.class);
+
+        if (coordinates.size() < 1 || !application.isPresent()) {
+            return Optional.empty();
+        }
+
+        GeoTrackPoints points = new GeoTrackPoints();
+
+        coordinates.stream()
+                .map(latLng -> new GeoTrackPoints.TrackPoint(latLng.getLatitude(), latLng.getLongitude(), latLng.getAltitude(),
+                latLng.getName(), null, null, null, getEpochTime(latLng.getCreatedTime())))
+                .forEach(points::addPoint);
+
+        return Optional.of(content.newDataArtifact(TSK_GPS_TRACK,
+                getFiltered(
+                        getAttr(TSK_NAME, exportName),
+                        getAttr(TSK_PROG_NAME, application.map(Application::getApplicationIdentifier).orElse(null)),
+                        getJsonAttr(TSK_GEO_TRACKPOINTS, points)
+                );
+    }
+
+    private Optional<DataArtifact> importExtractedText(Content content, Trace trace) throws TskCoreException {
+        Optional<ExtractedString> extractedString = getChild(trace, ExtractedString.class);
+
+        if (extractedString.isPresent()) {
+            return Optional.of(content.newDataArtifact(TSK_KEYWORD_HIT,
+                    getFiltered(getAttr(TSK_TEXT, extractedString.get().getStringValue()))));
+        } else {
+            return Optional.empty();
+        }
+
+    }
+
+    private Optional<Content> getParent(IdMapping idMapping, Trace trace) {
+
+    }
+
+    private List<Content> getContent(Trace trace, IdMapping idMap) {
+        Optional<Relationship> relationship = trace.getHasPropertyBundle().stream()
+                .filter((facet) -> facet instanceof Relationship)
+                .map((facet) -> (Relationship) facet)
+                .filter((relationship) -> relationship.getSource() != null
+                && relationship.getTarget() != null
+                && CONTAINED_WITHIN_RELATIONSHIP.equalsIgnoreCase(relationship.getKindOfRelationship())
+                && relationship.getIsDirectional())
+                .findFirst();
+
+        if (Boolean.valueOf(parentChildProperty)) {
+            addToOutput(new BlankRelationshipNode()
+                    .setSource(sourceId)
+                    .setTarget(parentId)
+                    .setKindOfRelationship("contained-within")
+                    .isDirectional(true), output);
+        }
+    }
+    
+    
+    private <T extends UcoObject> List<T> getSourcesFromTarget(IdMapping idMap, String id, Class<T> clazz) {
+        
+    }
+
+    private <T extends UcoObject> Optional<T> getByUcoId(IdMapping idMap, String id, Class<T> clazz) {
+
+    }
+
+    private <T> List<T> getFiltered(Optional<T>... items) {
+        return Stream.of(items)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .collect(Collectors.toList());
+    }
+
+    private <T extends Facet> List<T> getChildren(Trace parentTrace, Class<T> clazz) {
+        return parentTrace.getHasPropertyBundle().stream()
+                .filter((facet) -> clazz.isInstance(facet))
+                .map((facet) -> (T) facet)
+                .collect(Collectors.toList());
+    }
+
+    private <T extends Facet> Optional<T> getChild(Trace parentTrace, Class<T> clazz) {
+        return parentTrace.getHasPropertyBundle().stream()
+                .filter((facet) -> clazz.isInstance(facet))
+                .map((facet) -> (T) facet)
+                .findFirst();
+    }
+
+    private Optional<BlackboardAttribute> getTimeStampAttr(BlackboardAttribute.Type type, String value) {
+        return getEpochTime(value)
+                .flatMap((epochTime) -> getAttr(type, epochTime));
+    }
+
+    private Optional<BlackboardAttribute> getAttr(BlackboardAttribute.Type type, Long value) {
+        return Optional.ofNullable(value)
+                .map(timeVal -> new BlackboardAttribute(type, CASE_UCO_SOURCE, timeVal));
+    }
+
+    private Optional<BlackboardAttribute> getAttr(BlackboardAttribute.Type type, String value) {
+        return Optional.ofNullable(value)
+                .map(val -> new BlackboardAttribute(type, CASE_UCO_SOURCE, val));
+    }
+
+    private Optional<BlackboardAttribute> getJsonAttr(BlackboardAttribute.Type type, Object attrVal) {
+        return Optional.ofNullable(attrVal)
+                .map(val -> BlackboardJsonAttrUtil.toAttribute(type, CASE_UCO_SOURCE, attrVal));
+    }
+
+    private Optional<Long> getEpochTime(String timeStamp) {
+        if (timeStamp == null) {
+            return Optional.empty();
+        }
+
+        try {
+            return Optional.of(OffsetDateTime.parse(timeStamp).toEpochSecond());
+        } catch (DateTimeParseException ex) {
+            logger.log(Level.WARNING, "Unable to parse timestamp: " + timeStamp);
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Add the parent-child relationship, if configured to do so.
+     */
+    private void addParentChildRelationship(List<JsonElement> output, String sourceId, String parentId) {
+        String parentChildProperty = this.props.getProperty(INCLUDE_PARENT_CHILD_RELATIONSHIPS_PROP,
+                DEFAULT_PARENT_CHILD_RELATIONSHIPS_VALUE);
+
+        if (Boolean.valueOf(parentChildProperty)) {
+            addToOutput(new BlankRelationshipNode()
+                    .setSource(sourceId)
+                    .setTarget(parentId)
+                    .setKindOfRelationship("contained-within")
+                    .isDirectional(true), output);
+        }
+    }
+}
