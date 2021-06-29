@@ -33,6 +33,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import static org.sleuthkit.caseuco.StandardAttributeTypes.TSK_TEXT;
@@ -106,11 +108,16 @@ import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DATETIME_ACCE
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DATETIME_CREATED;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DATETIME_MODIFIED;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DESCRIPTION;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DEVICE_ID;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_EMAIL;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_GEO_TRACKPOINTS;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_HEADERS;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_ICCID;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_IMEI;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_IMSI;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_LAST_PRINTED_DATETIME;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_LOCATION;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_MAC_ADDRESS;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_NAME;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_NAME_PERSON;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_ORGANIZATION;
@@ -118,6 +125,7 @@ import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_OWNER;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PATH;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PHONE_NUMBER;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PROG_NAME;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_SSID;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_TL_EVENT_TYPE;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_URL;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_USER_ID;
@@ -1276,91 +1284,158 @@ public class CaseUcoImporter {
         addToOutput(export, output);
     }
 
-    private void assembleObjectDetected(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Assertion export = new Assertion(uuid)
-                .setStatement(getValueIfPresent(artifact, StandardAttributeTypes.TSK_COMMENT));
-        export.setDescription(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DESCRIPTION));
+    
+    private Optional<AnalysisResult> importObjectDetected(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        // potentially ambiguous assertion
+        Optional<Assertion> assertion = Optional.ofNullable((ucoObject instanceof Assertion) ? ((Assertion) ucoObject) : null);
 
-        addToOutput(export, output);
-    }
+        Optional<BlackboardAttribute> comment = assertion.flatMap((asrtn) -> getAttr(TSK_COMMENT, asrtn.getStatement()));
 
-    private void assembleWifiNetwork(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        WirelessNetworkConnection wirelessNetwork = new WirelessNetworkConnection()
-                .setSSID(getValueIfPresent(artifact, StandardAttributeTypes.TSK_SSID));
-
-        wirelessNetwork.setCreatedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME));
-
-        String networkId = getValueIfPresent(artifact, StandardAttributeTypes.TSK_DEVICE_ID);
-        if (networkId != null) {
-            wirelessNetwork.setId("_:" + networkId);
+        if (!comment.isPresent()) {
+            return Optional.empty();
         }
 
-        Trace export = new Trace(uuid)
-                .addBundle(wirelessNetwork);
+        Optional<BlackboardAttribute> description = assertion.flatMap((asrtn) -> getAttr(TSK_DESCRIPTION, asrtn.getDescription()));
 
-        addToOutput(export, output);
+        return Optional.of(content.newAnalysisResult(
+                TSK_OBJECT_DETECTED, Score.SCORE_UNKNOWN, 
+                null, null, null, 
+                getFiltered(comment, description)).getAnalysisResult());
     }
 
-    private void assembleDeviceInfo(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Trace export = new Trace(uuid)
-                .addBundle(new MobileDevice()
-                        .setIMEI(getValueIfPresent(artifact, StandardAttributeTypes.TSK_IMEI)))
-                .addBundle(new SIMCard()
-                        .setICCID(getValueIfPresent(artifact, StandardAttributeTypes.TSK_ICCID))
-                        .setIMSI(getValueIfPresent(artifact, StandardAttributeTypes.TSK_IMSI)));
+    private static final Pattern BLANK_NODE_REGEX = Pattern.compile("_:(.*)");
 
-        addToOutput(export, output);
+    private Optional<DataArtifact> importWifiNetwork(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        if (!(ucoObject instanceof Trace)) {
+            return Optional.empty();
+        }
+
+        Trace trace = (Trace) ucoObject;
+
+        Optional<WirelessNetworkConnection> connectionOpt = getChild(trace, WirelessNetworkConnection.class);
+
+        Optional<BlackboardAttribute> ssid = connectionOpt
+                .flatMap(conn -> getAttr(TSK_SSID, conn.getSsid()));
+
+        if (!ssid.isPresent()) {
+            return Optional.empty();
+        }
+
+        Optional<BlackboardAttribute> dateTime = connectionOpt
+                .flatMap(conn -> getTimeStampAttr(TSK_DATETIME, conn.getCreatedTime()));
+
+        Optional<BlackboardAttribute> deviceId = connectionOpt
+                .flatMap(conn -> Optional.ofNullable(conn.getId()))
+                .flatMap((idNodeVal) -> {
+                    String idStr = null;
+
+                    Matcher matcher = BLANK_NODE_REGEX.matcher(idNodeVal);
+                    if (matcher.find()) {
+                        idStr = matcher.group(1);
+                    }
+
+                    return Optional.ofNullable(idStr);
+                })
+                .flatMap((idStr) -> getAttr(TSK_DEVICE_ID, idStr));
+
+        return Optional.of(content.newDataArtifact(TSK_WIFI_NETWORK, getFiltered(ssid, dateTime, deviceId)));
     }
 
-    private void assembleSimAttached(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Trace export = new Trace(uuid)
-                .addBundle(new SIMCard()
-                        .setICCID(getValueIfPresent(artifact, StandardAttributeTypes.TSK_ICCID))
-                        .setIMSI(getValueIfPresent(artifact, StandardAttributeTypes.TSK_IMSI)));
+    private Optional<DataArtifact> assembleDeviceInfo(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        if (!(ucoObject instanceof Trace)) {
+            return Optional.empty();
+        }
 
-        addToOutput(export, output);
+        Trace trace = (Trace) ucoObject;
+
+        Optional<BlackboardAttribute> imei = getChild(trace, MobileDevice.class)
+                .flatMap((mobileDev) -> getAttr(TSK_IMEI, mobileDev.getIMEI()));
+
+        Optional<SIMCard> simCard = getChild(trace, SIMCard.class);
+
+        Optional<BlackboardAttribute> iccid = simCard
+                .flatMap((sCard) -> getAttr(TSK_ICCID, sCard.getICCID()));
+
+        Optional<BlackboardAttribute> imsi = simCard
+                .flatMap((sCard) -> getAttr(TSK_IMSI, sCard.getIMSI()));
+
+        List<BlackboardAttribute> attrs = getFiltered(imei, iccid, imsi);
+
+        return attrs.isEmpty()
+                ? Optional.empty()
+                : Optional.of(content.newDataArtifact(TSK_DEVICE_INFO, attrs));
     }
 
-    private void assembleBluetoothAdapter(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Trace export = new Trace(uuid)
-                .addBundle(new MACAddress()
-                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_MAC_ADDRESS)));
+    private Optional<DataArtifact> importSimAttached(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        // get ucoObject as trace
+        Optional<SIMCard> simCardOpt = Optional.ofNullable((ucoObject instanceof Trace) ? ((Trace) ucoObject) : null)
+                // find child SIMCard if exists
+                .flatMap(trace -> getChild(trace, SIMCard.class));
 
-        addToOutput(export, output);
+        if (!simCardOpt.isPresent()) {
+            return Optional.empty();
+        }
+
+        SIMCard simCard = simCardOpt.get();
+        List<BlackboardAttribute> attrs = getFiltered(getAttr(TSK_ICCID, simCard.getICCID()), getAttr(TSK_IMSI, simCard.getIMSI()));
+
+        return attrs.isEmpty()
+                ? Optional.empty()
+                : Optional.of(content.newDataArtifact(TSK_SIM_ATTACHED, attrs));
     }
 
-    private void assembleWifiNetworkAdapter(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Trace export = new Trace(uuid)
-                .addBundle(new MACAddress()
-                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_MAC_ADDRESS)));
+    private Optional<DataArtifact> importBluetoothAdapter(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        // this is ambiguous with wifi network adapter    
 
-        addToOutput(export, output);
+        // get ucoObject as trace
+        Optional<BlackboardAttribute> macAddress = Optional.ofNullable((ucoObject instanceof Trace) ? ((Trace) ucoObject) : null)
+                // find child MACAddress if exists
+                .flatMap(trace -> getChild(trace, MACAddress.class))
+                // turn into tsk attribute if exists
+                .flatMap(macAddr -> getAttr(TSK_MAC_ADDRESS, macAddr.getValue()));
+
+        return macAddress.isPresent()
+                ? Optional.of(content.newDataArtifact(TSK_BLUETOOTH_ADAPTER, Arrays.asList(macAddress.get())))
+                : Optional.empty();
     }
 
-    private void assembleVerificationFailed(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Assertion export = new Assertion(uuid);
-        export.setStatement(getValueIfPresent(artifact, StandardAttributeTypes.TSK_COMMENT));
+    private Optional<DataArtifact> importWifiNetworkAdapter(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
 
-        addToOutput(export, output);
+        // get ucoObject as trace
+        Optional<BlackboardAttribute> macAddress = Optional.ofNullable((ucoObject instanceof Trace) ? ((Trace) ucoObject) : null)
+                // find child MACAddress if exists
+                .flatMap(trace -> getChild(trace, MACAddress.class))
+                // turn into tsk attribute if exists
+                .flatMap(macAddr -> getAttr(TSK_MAC_ADDRESS, macAddr.getValue()));
+
+        return macAddress.isPresent()
+                ? Optional.of(content.newDataArtifact(TSK_WIFI_NETWORK_ADAPTER, Arrays.asList(macAddress.get())))
+                : Optional.empty();
     }
 
-    private void assembleDataSourceUsage(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Trace export = new Trace(uuid);
-        export.setDescription(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DESCRIPTION));
+    private Optional<AnalysisResult> importVerificationFailed(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        // this will be ambiguous with other assertion instances
 
-        addToOutput(export, output);
+        Optional<BlackboardAttribute> comment = Optional.ofNullable((ucoObject instanceof Assertion) ? ((Assertion) ucoObject) : null)
+                .flatMap(assertion -> getAttr(TSK_COMMENT, assertion.getStatement()));
+
+        return comment.isPresent()
+                ? Optional.of(content.newAnalysisResult(TSK_VERIFICATION_FAILED, Score.SCORE_UNKNOWN,
+                        null, null, null, Arrays.asList(comment.get()))
+                        .getAnalysisResult())
+                : Optional.empty();
     }
 
     private Optional<AnalysisResult> importDataSourceUsage(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
         // this is ambiguous since it is only a trace with a description
-        
+
         Optional<BlackboardAttribute> description = Optional.ofNullable((ucoObject instanceof Trace) ? ((Trace) ucoObject) : null)
                 .flatMap(trace -> getAttr(TSK_DESCRIPTION, trace.getDescription()));
-        
+
         if (description.isPresent()) {
             return Optional.of(
-                    content.newAnalysisResult(TSK_DATA_SOURCE_USAGE, Score.SCORE_UNKNOWN, 
-                            null, null, null, 
+                    content.newAnalysisResult(TSK_DATA_SOURCE_USAGE, Score.SCORE_UNKNOWN,
+                            null, null, null,
                             Arrays.asList(description.get()))
                             .getAnalysisResult());
         } else {
@@ -1368,48 +1443,40 @@ public class CaseUcoImporter {
         }
     }
 
-
-    
     private Optional<DataArtifact> importWebFormAddress(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
         // no TSK_COMMENT?  could be inserted
         // no TSK_COUNT
-        
+
         if (!(ucoObject instanceof Trace)) {
             return Optional.empty();
         }
-        
+
         Trace trace = (Trace) ucoObject;
         Optional<BlackboardAttribute> location = getChild(trace, SimpleAddress.class)
                 .flatMap(simpleAddr -> getAttr(TSK_LOCATION, simpleAddr.getDescription()));
-        
+
         if (!location.isPresent()) {
             return Optional.empty();
         }
-        
+
         Optional<BlackboardAttribute> email = getChild(trace, EmailAddress.class)
                 .flatMap(emailAddr -> getAttr(TSK_EMAIL, emailAddr.getValue()));
-        
+
         Optional<BlackboardAttribute> phoneAcct = getChild(trace, PhoneAccount.class)
                 .flatMap(pa -> getAttr(TSK_PHONE_NUMBER, pa.getPhoneNumber()));
-        
+
         Optional<BlackboardAttribute> accessedTime = getTimeStampAttr(TSK_DATETIME_ACCESSED, trace.getCreatedTime());
         Optional<BlackboardAttribute> modifiedTime = getTimeStampAttr(TSK_DATETIME_MODIFIED, trace.getModifiedTime());
-        
+
         Optional<BlackboardAttribute> person = getSourcesFromTarget(mapping, trace.getId(), Person.class).stream()
                 .map(p -> getAttr(TSK_NAME_PERSON, p.getName()))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .findFirst();
-        
-        List<BlackboardAttribute> attrs = Stream.of(email, phoneAcct, accessedTime, modifiedTime, person)
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .collect(Collectors.toList());
-                
-        return Optional.of(content.newDataArtifact(TSK_WEB_FORM_ADDRESS, attrs));
+
+        return Optional.of(content.newDataArtifact(TSK_WEB_FORM_ADDRESS, getFiltered(email, phoneAcct, accessedTime, modifiedTime, person)));
     }
 
-    
     private Optional<DataArtifact> importWebCache(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
         // does not appear that TSK_PATH_ID / TSK_DOMAIN are determined here
         // TSK_DOMAIN could be calculated
@@ -1435,12 +1502,7 @@ public class CaseUcoImporter {
 
         Optional<BlackboardAttribute> createdTime = getAttr(TSK_DATETIME_CREATED, trace.getCreatedTime());
 
-        List<BlackboardAttribute> attrs = Stream.of(pathRelation, url, headers, createdTime)
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .collect(Collectors.toList());
-
-        return Optional.of(content.newDataArtifact(TSK_WEB_CACHE, attrs));
+        return Optional.of(content.newDataArtifact(TSK_WEB_CACHE, getFiltered(pathRelation, url, headers, createdTime)));
     }
 
     private Optional<DataArtifact> importTimelineEvent(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
@@ -1466,12 +1528,7 @@ public class CaseUcoImporter {
                 .map(Optional::get)
                 .findFirst();
 
-        List<BlackboardAttribute> attrs = Stream.of(dateTime, description, tlType)
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .collect(Collectors.toList());
-
-        return Optional.of(content.newDataArtifact(TSK_TL_EVENT, attrs));
+        return Optional.of(content.newDataArtifact(TSK_TL_EVENT, getFiltered(dateTime, description, tlType)));
     }
 
     private Optional<DataArtifact> importClipboardContent(Content content, UcoObject ucoObject) throws TskCoreException {
