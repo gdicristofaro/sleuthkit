@@ -102,16 +102,24 @@ import org.sleuthkit.datamodel.BlackboardAttribute;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_ASSOCIATED_ARTIFACT;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_COMMENT;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DATETIME;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DATETIME_ACCESSED;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DATETIME_CREATED;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DATETIME_MODIFIED;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DESCRIPTION;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_EMAIL;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_GEO_TRACKPOINTS;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_HEADERS;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_LAST_PRINTED_DATETIME;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_LOCATION;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_NAME;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_NAME_PERSON;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_ORGANIZATION;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_OWNER;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PATH;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PHONE_NUMBER;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PROG_NAME;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_TL_EVENT_TYPE;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_URL;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_USER_ID;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_VERSION;
 import org.sleuthkit.datamodel.Content;
@@ -1343,63 +1351,98 @@ public class CaseUcoImporter {
         addToOutput(export, output);
     }
 
-    private void assembleWebFormAddress(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        SimpleAddress simpleAddress = new SimpleAddress();
-        simpleAddress.setDescription(getValueIfPresent(artifact, StandardAttributeTypes.TSK_LOCATION));
-
-        Trace export = new Trace(uuid)
-                .addBundle(simpleAddress)
-                .addBundle(new EmailAddress()
-                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_EMAIL)))
-                .addBundle(new PhoneAccount()
-                        .setPhoneNumber(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PHONE_NUMBER)));
-
-        export.setCreatedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_ACCESSED));
-        export.setModifiedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_MODIFIED));
-
-        Person person = new BlankPersonNode();
-        person.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_NAME_PERSON));
-
-        addToOutput(export, output);
-        addToOutput(person, output);
-        addToOutput(new BlankRelationshipNode()
-                .setSource(person.getId())
-                .setTarget(export.getId()), output);
-
+    private Optional<AnalysisResult> importDataSourceUsage(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        // this is ambiguous since it is only a trace with a description
+        
+        Optional<BlackboardAttribute> description = Optional.ofNullable((ucoObject instanceof Trace) ? ((Trace) ucoObject) : null)
+                .flatMap(trace -> getAttr(TSK_DESCRIPTION, trace.getDescription()));
+        
+        if (description.isPresent()) {
+            return Optional.of(
+                    content.newAnalysisResult(TSK_DATA_SOURCE_USAGE, Score.SCORE_UNKNOWN, 
+                            null, null, null, 
+                            Arrays.asList(description.get()))
+                            .getAnalysisResult());
+        } else {
+            return Optional.empty();
+        }
     }
 
-    private void assembleWebCache(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Optional<PathRelation> pathRelation = getCh
-        Trace export = new Trace(uuid)
-                .addBundle(new PathRelation()
-                        .setPath(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PATH)))
-                .addBundle(new URL()
-                        .setFullValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_URL)))
-                .addBundle(new HTTPConnection()
-                        .setHttpRequestHeader(getValueIfPresent(artifact, StandardAttributeTypes.TSK_HEADERS)));
 
-        export.setCreatedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_CREATED));
-
-        addToOutput(export, output);
+    
+    private Optional<DataArtifact> importWebFormAddress(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        // no TSK_COMMENT?  could be inserted
+        // no TSK_COUNT
+        
+        if (!(ucoObject instanceof Trace)) {
+            return Optional.empty();
+        }
+        
+        Trace trace = (Trace) ucoObject;
+        Optional<BlackboardAttribute> location = getChild(trace, SimpleAddress.class)
+                .flatMap(simpleAddr -> getAttr(TSK_LOCATION, simpleAddr.getDescription()));
+        
+        if (!location.isPresent()) {
+            return Optional.empty();
+        }
+        
+        Optional<BlackboardAttribute> email = getChild(trace, EmailAddress.class)
+                .flatMap(emailAddr -> getAttr(TSK_EMAIL, emailAddr.getValue()));
+        
+        Optional<BlackboardAttribute> phoneAcct = getChild(trace, PhoneAccount.class)
+                .flatMap(pa -> getAttr(TSK_PHONE_NUMBER, pa.getPhoneNumber()));
+        
+        Optional<BlackboardAttribute> accessedTime = getTimeStampAttr(TSK_DATETIME_ACCESSED, trace.getCreatedTime());
+        Optional<BlackboardAttribute> modifiedTime = getTimeStampAttr(TSK_DATETIME_MODIFIED, trace.getModifiedTime());
+        
+        Optional<BlackboardAttribute> person = getSourcesFromTarget(mapping, trace.getId(), Person.class).stream()
+                .map(p -> getAttr(TSK_NAME_PERSON, p.getName()))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .findFirst();
+        
+        List<BlackboardAttribute> attrs = Stream.of(email, phoneAcct, accessedTime, modifiedTime, person)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .collect(Collectors.toList());
+                
+        return Optional.of(content.newDataArtifact(TSK_WEB_FORM_ADDRESS, attrs));
     }
-    
-    
-        private void assembleWebCache(Content content, UcoObject ucoObject) throws TskCoreException {
-        Optional<PathRelation> pathRelation = getCh
-        Trace export = new Trace(uuid)
-                .addBundle(new PathRelation()
-                        .setPath(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PATH)))
-                .addBundle(new URL()
-                        .setFullValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_URL)))
-                .addBundle(new HTTPConnection()
-                        .setHttpRequestHeader(getValueIfPresent(artifact, StandardAttributeTypes.TSK_HEADERS)));
 
-        export.setCreatedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_CREATED));
+    
+    private Optional<DataArtifact> importWebCache(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        // does not appear that TSK_PATH_ID / TSK_DOMAIN are determined here
+        // TSK_DOMAIN could be calculated
 
-        addToOutput(export, output);
+        if (!(ucoObject instanceof Trace)) {
+            return Optional.empty();
+        }
+
+        Trace trace = (Trace) ucoObject;
+
+        Optional<BlackboardAttribute> pathRelation = getChild(trace, PathRelation.class)
+                .flatMap(pathRel -> getAttr(TSK_PATH, pathRel.getPath()));
+
+        Optional<BlackboardAttribute> url = getChild(trace, URL.class)
+                .flatMap(u -> getAttr(TSK_URL, u.getFullValue()));
+
+        if (!pathRelation.isPresent() || !url.isPresent()) {
+            return Optional.empty();
+        }
+
+        Optional<BlackboardAttribute> headers = getChild(trace, HTTPConnection.class)
+                .flatMap(httpCon -> getAttr(TSK_HEADERS, httpCon.getHttpRequestHeader()));
+
+        Optional<BlackboardAttribute> createdTime = getAttr(TSK_DATETIME_CREATED, trace.getCreatedTime());
+
+        List<BlackboardAttribute> attrs = Stream.of(pathRelation, url, headers, createdTime)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .collect(Collectors.toList());
+
+        return Optional.of(content.newDataArtifact(TSK_WEB_CACHE, attrs));
     }
 
-    
     private Optional<DataArtifact> importTimelineEvent(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
         if (!(ucoObject instanceof Action)) {
             return Optional.empty();
@@ -1410,7 +1453,10 @@ public class CaseUcoImporter {
         Optional<BlackboardAttribute> dateTime = getTimeStampAttr(TSK_DATETIME, action.getStartTime());
         Optional<BlackboardAttribute> description = getAttr(TSK_DESCRIPTION, action.getDescription());
         Optional<BlackboardAttribute> tlType = getSourcesFromTarget(mapping, action.getId(), Trace.class).stream()
+                // find a related ActionArgument in the related traces
                 .flatMap(trace -> getChildren(trace, ActionArgument.class).stream())
+                // if one exists, create a TSK_TL_EVENT_TYPE by going from getArgumentName to an event type with that 
+                // display name to an attribute with the id of that event type
                 .map(actionArgument -> {
                     return Optional.ofNullable(actionArgument.getArgumentName())
                             .flatMap(displayName -> Optional.ofNullable(eventTypeMapping.get(displayName)))
@@ -1420,17 +1466,14 @@ public class CaseUcoImporter {
                 .map(Optional::get)
                 .findFirst();
 
-        
         List<BlackboardAttribute> attrs = Stream.of(dateTime, description, tlType)
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .collect(Collectors.toList());
-        
+
         return Optional.of(content.newDataArtifact(TSK_TL_EVENT, attrs));
     }
 
-
-    
     private Optional<DataArtifact> importClipboardContent(Content content, UcoObject ucoObject) throws TskCoreException {
         if (!(ucoObject instanceof Trace)) {
             return Optional.empty();
