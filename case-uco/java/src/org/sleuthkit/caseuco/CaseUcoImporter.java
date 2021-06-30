@@ -26,8 +26,6 @@ import java.time.format.DateTimeParseException;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -100,21 +98,26 @@ import org.sleuthkit.datamodel.Volume;
 import org.sleuthkit.datamodel.VolumeSystem;
 import org.sleuthkit.datamodel.AbstractFile;
 import org.sleuthkit.datamodel.AccountFileInstance;
-import org.sleuthkit.datamodel.AnalysisResult;
 import org.sleuthkit.datamodel.BlackboardArtifact;
 import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_KEYWORD_HIT;
 import org.sleuthkit.datamodel.BlackboardAttribute;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_ACCOUNT_TYPE;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_ASSOCIATED_ARTIFACT;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_CALENDAR_ENTRY_TYPE;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_CARD_NUMBER;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_COMMENT;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_COUNT;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DATETIME;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DATETIME_ACCESSED;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DATETIME_CREATED;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DATETIME_END;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DATETIME_MODIFIED;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DATETIME_START;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DESCRIPTION;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DEVICE_ID;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DEVICE_MAKE;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DEVICE_MODEL;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DIRECTION;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_EMAIL;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_GEO_ALTITUDE;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_GEO_LATITUDE;
@@ -135,6 +138,8 @@ import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_ORGANIZATION;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_OWNER;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PATH;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PHONE_NUMBER;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PHONE_NUMBER_FROM;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PHONE_NUMBER_TO;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PROG_NAME;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_REMOTE_PATH;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_SET_NAME;
@@ -145,7 +150,6 @@ import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_USER_ID;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_VERSION;
 import org.sleuthkit.datamodel.CommunicationsManager;
 import org.sleuthkit.datamodel.Content;
-import org.sleuthkit.datamodel.DataArtifact;
 import org.sleuthkit.datamodel.Score;
 import org.sleuthkit.datamodel.TimelineEventType;
 import org.sleuthkit.datamodel.TskCoreException;
@@ -154,7 +158,6 @@ import org.sleuthkit.datamodel.blackboardutils.attributes.GeoTrackPoints;
 import org.sleuthkit.datamodel.blackboardutils.attributes.MessageAttachments;
 import org.sleuthkit.datamodel.SleuthkitCase;
 import org.sleuthkit.datamodel.TskData.DbType;
-import sun.util.logging.PlatformLogger;
 
 /**
  * Exports Sleuth Kit DataModel objects to CASE. The CASE JSON output is
@@ -1014,7 +1017,18 @@ public class CaseUcoImporter {
         addToOutput(export, output);
     }
 
-    private void assembleMessage(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException, BlackboardJsonAttrUtil.InvalidJsonException {
+    private Optional<BlackboardArtifact> importMessage(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException, BlackboardJsonAttrUtil.InvalidJsonException {
+        if (!(ucoObject instanceof Trace)) {
+            return Optional.empty();
+        }
+
+        Trace trace = (Trace) ucoObject;
+
+        Optional<Message> message = getChild(trace, Message.class);
+        Optional<EmailMessage> message = getChild(trace, EmailMessage.class);
+        Optional<PhoneAccount> message = getChild(trace, PhoneAccount.class);
+        Optional<Message> message = getChild(trace, Message.class);
+
         Trace applicationNode = new BlankTraceNode()
                 .addBundle(new Application()
                         .setApplicationIdentifier(getValueIfPresent(artifact, StandardAttributeTypes.TSK_MESSAGE_TYPE)));
@@ -1069,64 +1083,102 @@ public class CaseUcoImporter {
         addToOutput(toNode, output);
     }
 
-    private void assembleMetadataExif(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Trace export = new Trace(uuid)
-                .addBundle(new Device()
-                        .setManufacturer(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DEVICE_MAKE))
-                        .setModel(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DEVICE_MODEL)))
-                .addBundle(new LatLongCoordinates()
-                        .setAltitude(getDoubleIfPresent(artifact, StandardAttributeTypes.TSK_GEO_ALTITUDE))
-                        .setLatitude(getDoubleIfPresent(artifact, StandardAttributeTypes.TSK_GEO_LATITUDE))
-                        .setLongitude(getDoubleIfPresent(artifact, StandardAttributeTypes.TSK_GEO_LONGITUDE)));
+    private Optional<BlackboardArtifact> importMetadataExif(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        if (!(ucoObject instanceof Trace)) {
+            return Optional.empty();
+        }
 
-        export.setCreatedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_CREATED));
-        addToOutput(export, output);
+        Trace trace = (Trace) ucoObject;
+
+        Optional<Device> device = getChild(trace, Device.class);
+        Optional<LatLongCoordinates> coordinates = getChild(trace, LatLongCoordinates.class);
+
+        if (!device.isPresent() || !coordinates.isPresent()) {
+            return Optional.empty();
+        }
+
+        Optional<BlackboardAttribute> deviceMake = device.flatMap((dev) -> getAttr(TSK_DEVICE_MAKE, dev.getManufacturer()));
+        Optional<BlackboardAttribute> deviceModel = device.flatMap((dev) -> getAttr(TSK_DEVICE_MODEL, dev.getModel()));
+
+        Optional<BlackboardAttribute> latitude = coordinates.flatMap((latLng) -> getAttr(TSK_GEO_LATITUDE, latLng.getLatitude()));
+        Optional<BlackboardAttribute> longitude = coordinates.flatMap((latLng) -> getAttr(TSK_GEO_LONGITUDE, latLng.getLongitude()));
+        Optional<BlackboardAttribute> altitude = coordinates.flatMap((latLng) -> getAttr(TSK_GEO_ALTITUDE, latLng.getAltitude()));
+
+        Optional<BlackboardAttribute> createdTime = getTimeStampAttr(TSK_DATETIME_CREATED, trace.getCreatedTime());
+
+        List<BlackboardAttribute> attrs = getFiltered(deviceMake, deviceModel, latitude, longitude, altitude, createdTime);
+
+        return attrs.isEmpty()
+                ? newArtifact(content, TSK_METADATA_EXIF, attrs)
+                : Optional.empty();
     }
 
-    private void assembleCallog(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Trace fromNode = new BlankTraceNode()
-                .addBundle(new PhoneAccount()
-                        .setPhoneNumber(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PHONE_NUMBER_FROM)));
+    private Optional<BlackboardArtifact> importCallLog(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        if (!(ucoObject instanceof Trace)) {
+            return Optional.empty();
+        }
 
-        Trace toNode = new BlankTraceNode()
-                .addBundle(new PhoneAccount()
-                        .setPhoneNumber(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PHONE_NUMBER_TO)));
+        Trace trace = (Trace) ucoObject;
 
-        Trace export = new Trace(uuid)
-                .addBundle(new PhoneAccount()
-                        .setPhoneNumber(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PHONE_NUMBER)))
-                .addBundle(new PhoneCall()
-                        .setFrom(fromNode)
-                        .setTo(toNode)
-                        .setEndTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_END))
-                        .setStartTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_START))
-                        .setCallType(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DIRECTION)))
-                .addBundle(new Contact()
-                        .setContactName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_NAME)));
+        Optional<PhoneCall> phoneCall = getChild(trace, PhoneCall.class);
 
-        addToOutput(export, output);
-        addToOutput(toNode, output);
-        addToOutput(fromNode, output);
+        Optional<BlackboardAttribute> phoneFrom = phoneCall
+                .flatMap(call -> Optional.ofNullable(call.getFrom()))
+                .flatMap(fromId -> getByUcoId(mapping, fromId, Trace.class))
+                .flatMap(fromTrace -> getChild(fromTrace, PhoneAccount.class))
+                .flatMap(phoneAcct -> getAttr(TSK_PHONE_NUMBER_FROM, phoneAcct.getPhoneNumber()));
+
+        Optional<BlackboardAttribute> phoneTo = phoneCall
+                .flatMap(call -> Optional.ofNullable(call.getTo()))
+                .flatMap(toId -> getByUcoId(mapping, toId, Trace.class))
+                .flatMap(toTrace -> getChild(toTrace, PhoneAccount.class))
+                .flatMap(phoneAcct -> getAttr(TSK_PHONE_NUMBER_TO, phoneAcct.getPhoneNumber()));
+
+        Optional<PhoneAccount> phoneAccount = getChild(trace, PhoneAccount.class);
+        Optional<BlackboardAttribute> phoneNumber = phoneAccount
+                .flatMap(phoneAcct -> getAttr(TSK_PHONE_NUMBER, phoneAcct.getPhoneNumber()));
+
+        Optional<Contact> contact = getChild(trace, Contact.class);
+
+        Optional<BlackboardAttribute> name = contact.flatMap(c -> getAttr(TSK_NAME, c.getContactName()));
+
+        if (!phoneCall.isPresent() || !contact.isPresent() || !phoneAccount.isPresent()
+                || getFiltered(phoneNumber, phoneFrom, phoneTo).isEmpty()) {
+            return Optional.empty();
+        }
+
+        Optional<BlackboardAttribute> endTime = phoneCall.flatMap(call -> getTimeStampAttr(TSK_DATETIME_END, call.getEndTime()));
+        Optional<BlackboardAttribute> startTime = phoneCall.flatMap(call -> getTimeStampAttr(TSK_DATETIME_START, call.getStartTime()));
+        Optional<BlackboardAttribute> direction = phoneCall.flatMap(call -> getAttr(TSK_DIRECTION, call.getCallType()));
+
+        return newArtifact(content, TSK_CALLLOG, getFiltered(phoneFrom, phoneTo, phoneNumber, name, direction, startTime, endTime));
     }
 
-    private void assembleCalendarEntry(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Trace export = new Trace(uuid);
+    private Optional<BlackboardArtifact> importCalendarEntry(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        if (!(ucoObject instanceof Trace)) {
+            return Optional.empty();
+        }
 
-        CalendarEntry calendarEntry = new CalendarEntry()
-                .setStartTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_START))
-                .setEndTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_END))
-                .setEventType(getValueIfPresent(artifact, StandardAttributeTypes.TSK_CALENDAR_ENTRY_TYPE));
+        Trace trace = (Trace) ucoObject;
 
-        calendarEntry.setDescription(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DESCRIPTION));
+        Optional<CalendarEntry> calEntry = getChild(trace, CalendarEntry.class);
 
-        BlankLocationNode locationNode = new BlankLocationNode();
-        locationNode.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_LOCATION));
+        Optional<BlackboardAttribute> startTime = calEntry.flatMap(ce -> getTimeStampAttr(TSK_DATETIME_START, ce.getStartTime()));
+        Optional<BlackboardAttribute> calType = calEntry.flatMap(ce -> getAttr(TSK_CALENDAR_ENTRY_TYPE, ce.getEventType()));
 
-        calendarEntry.setLocation(locationNode);
-        export.addBundle(calendarEntry);
+        if (!startTime.isPresent() || !calType.isPresent()) {
+            return Optional.empty();
+        }
 
-        addToOutput(export, output);
-        addToOutput(locationNode, output);
+        Optional<BlackboardAttribute> endTime = calEntry.flatMap(ce -> getTimeStampAttr(TSK_DATETIME_END, ce.getEndTime()));
+        Optional<BlackboardAttribute> description = calEntry.flatMap(ce -> getAttr(TSK_DESCRIPTION, ce.getDescription()));
+
+        Optional<BlackboardAttribute> location = calEntry
+                .flatMap(ce -> Optional.ofNullable(ce.getLocation()))
+                .flatMap(locId -> getByUcoId(mapping, locId, Location.class))
+                .flatMap(loc -> getAttr(TSK_LOCATION, loc.getName()));
+
+        return newArtifact(content, TSK_CALENDAR_ENTRY, getFiltered(startTime, calType, endTime, description, location));
     }
 
     private Optional<BlackboardArtifact> importSpeedDialEntry(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
@@ -1135,16 +1187,16 @@ public class CaseUcoImporter {
         }
 
         Trace trace = (Trace) ucoObject;
-        
+
         Optional<Contact> contact = getChild(trace, Contact.class);
         Optional<BlackboardAttribute> phoneNumber = getChild(trace, PhoneAccount.class).flatMap(phoneAcct -> getAttr(TSK_PHONE_NUMBER, phoneAcct.getPhoneNumber()));
-        
+
         if (!contact.isPresent() || !phoneNumber.isPresent()) {
             return Optional.empty();
         }
-        
+
         Optional<BlackboardAttribute> namePerson = contact.flatMap(c -> getAttr(TSK_NAME_PERSON, c.getContactName()));
-        
+
         return newArtifact(content, TSK_SPEED_DIAL_ENTRY, getFiltered(phoneNumber, namePerson));
     }
 
@@ -1154,7 +1206,7 @@ public class CaseUcoImporter {
         }
 
         Trace trace = (Trace) ucoObject;
-        
+
         Optional<BlackboardAttribute> macAddress = getChild(trace, MACAddress.class)
                 .flatMap(macAddr -> getAttr(TSK_MAC_ADDRESS, macAddr.getValue()));
 
@@ -1162,7 +1214,7 @@ public class CaseUcoImporter {
                 .flatMap(mobileDevice -> getAttr(TSK_DEVICE_NAME, mobileDevice.getBluetoothDeviceName()));
 
         Optional<BlackboardAttribute> dateTime = getTimeStampAttr(TSK_DATETIME, trace.getCreatedTime());
-                
+
         return deviceName.isPresent()
                 ? newArtifact(content, TSK_BLUETOOTH_PAIRING, getFiltered(macAddress, deviceName, dateTime))
                 : Optional.empty();
@@ -1170,7 +1222,7 @@ public class CaseUcoImporter {
 
     private Optional<BlackboardArtifact> importGpsBookmark(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
         // similar except for Application instance from gps search 
-        
+
         if (!(ucoObject instanceof Trace)) {
             return Optional.empty();
         }
@@ -1185,15 +1237,15 @@ public class CaseUcoImporter {
         Optional<BlackboardAttribute> longitude = coordinates.flatMap((latLng) -> getAttr(TSK_GEO_LONGITUDE, latLng.getLongitude()));
 
         Optional<Application> application = getChild(trace, Application.class);
-        
+
         if (!application.isPresent() || !latitude.isPresent() || !longitude.isPresent()) {
             return Optional.empty();
         }
-        
+
         Optional<BlackboardAttribute> progName = application.flatMap((app) -> getAttr(TSK_PROG_NAME, app.getApplicationIdentifier()));
-        
+
         Optional<BlackboardAttribute> altitude = coordinates.flatMap((latLng) -> getAttr(TSK_GEO_ALTITUDE, latLng.getAltitude()));
-                
+
         Optional<BlackboardAttribute> location = getChild(trace, SimpleAddress.class).flatMap((addr) -> getAttr(TSK_LOCATION, addr.getDescription()));
 
         Optional<BlackboardAttribute> name = getFirstPresent(
@@ -1205,7 +1257,7 @@ public class CaseUcoImporter {
 
     private Optional<BlackboardArtifact> importGpsLastKnownLocation(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
         // indistinguishable from gps search 
-        
+
         if (!(ucoObject instanceof Trace)) {
             return Optional.empty();
         }
@@ -1222,9 +1274,9 @@ public class CaseUcoImporter {
         if (!latitude.isPresent() || !longitude.isPresent()) {
             return Optional.empty();
         }
-        
+
         Optional<BlackboardAttribute> altitude = coordinates.flatMap((latLng) -> getAttr(TSK_GEO_ALTITUDE, latLng.getAltitude()));
-                
+
         Optional<BlackboardAttribute> location = getChild(trace, SimpleAddress.class).flatMap((addr) -> getAttr(TSK_LOCATION, addr.getDescription()));
 
         Optional<BlackboardAttribute> name = getFirstPresent(
@@ -1251,9 +1303,9 @@ public class CaseUcoImporter {
         if (!latitude.isPresent() || !longitude.isPresent()) {
             return Optional.empty();
         }
-        
+
         Optional<BlackboardAttribute> altitude = coordinates.flatMap((latLng) -> getAttr(TSK_GEO_ALTITUDE, latLng.getAltitude()));
-                
+
         Optional<BlackboardAttribute> location = getChild(trace, SimpleAddress.class).flatMap((addr) -> getAttr(TSK_LOCATION, addr.getDescription()));
 
         Optional<BlackboardAttribute> name = getFirstPresent(
