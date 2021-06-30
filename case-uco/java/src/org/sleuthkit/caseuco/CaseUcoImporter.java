@@ -97,11 +97,14 @@ import org.sleuthkit.datamodel.Pool;
 import org.sleuthkit.datamodel.Volume;
 import org.sleuthkit.datamodel.VolumeSystem;
 import org.sleuthkit.datamodel.AbstractFile;
+import org.sleuthkit.datamodel.AccountFileInstance;
 import org.sleuthkit.datamodel.AnalysisResult;
 import org.sleuthkit.datamodel.BlackboardArtifact;
 import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_KEYWORD_HIT;
 import org.sleuthkit.datamodel.BlackboardAttribute;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_ACCOUNT_TYPE;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_ASSOCIATED_ARTIFACT;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_CARD_NUMBER;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_COMMENT;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DATETIME;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DATETIME_ACCESSED;
@@ -113,9 +116,11 @@ import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_EMAIL;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_GEO_TRACKPOINTS;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_HEADERS;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_ICCID;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_ID;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_IMEI;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_IMSI;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_LAST_PRINTED_DATETIME;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_LOCAL_PATH;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_LOCATION;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_MAC_ADDRESS;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_NAME;
@@ -125,11 +130,14 @@ import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_OWNER;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PATH;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PHONE_NUMBER;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PROG_NAME;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_REMOTE_PATH;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_SET_NAME;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_SSID;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_TL_EVENT_TYPE;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_URL;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_USER_ID;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_VERSION;
+import org.sleuthkit.datamodel.CommunicationsManager;
 import org.sleuthkit.datamodel.Content;
 import org.sleuthkit.datamodel.DataArtifact;
 import org.sleuthkit.datamodel.Score;
@@ -1214,79 +1222,174 @@ public class CaseUcoImporter {
         addToOutput(export, output);
     }
 
-    private void assembleInterestingArtifact(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Assertion export = new Assertion(uuid);
-        export.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_SET_NAME));
-        export.setStatement(getValueIfPresent(artifact, StandardAttributeTypes.TSK_COMMENT));
+    private Optional<AnalysisResult> importInterestingArtifact(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        // assertion seems to be main 
+        if (!(ucoObject instanceof Assertion)) {
+            return Optional.empty();
+        }
+        
+        Assertion assertion = (Assertion) ucoObject;
+        Optional<BlackboardAttribute> setName = getAttr(TSK_SET_NAME, assertion.getName());
+        Optional<BlackboardAttribute> comment = getAttr(TSK_COMMENT, assertion.getStatement());
+        
+        if (!setName.isPresent() || !comment.isPresent()) {
+            return Optional.empty();
+        }
+        
+        Optional<BlackboardAttribute> associatedArtifact = getTargetIdsFromSource(mapping, assertion.getId()).stream()
+                .map(id -> getTskObjByUcoId(mapping, id, BlackboardArtifact.class)
+                    .flatMap(art -> getAttr(TSK_ASSOCIATED_ARTIFACT, art.getId())))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .findFirst();
+        
+        return Optional.of(content.newAnalysisResult(TSK_INTERESTING_ARTIFACT_HIT, Score.SCORE_UNKNOWN, 
+                null, null, null, 
+                getFiltered(setName, comment, associatedArtifact))
+                .getAnalysisResult());
+    }
 
-        Long associatedArtifactId = getLongIfPresent(artifact, StandardAttributeTypes.TSK_ASSOCIATED_ARTIFACT);
-        if (associatedArtifactId != null) {
-            BlackboardArtifact associatedArtifact = artifact.getSleuthkitCase().getBlackboardArtifact(associatedArtifactId);
+    private Optional<DataArtifact> importGPSRoute(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        // what are assumed children of this?  the assumption that an application and simple address are present is flimsy at best
+        // application / simple address is used elsewhere and appears to be main identifying feature
+        // no waypoints?
+        
+        if (!(ucoObject instanceof Trace)) {
+            return Optional.empty();
+        }
+        
+        Trace trace = (Trace) ucoObject;
+        
+        Optional<Application> application = getChild(trace, Application.class);
+        Optional<SimpleAddress> address = getChild(trace, SimpleAddress.class);
+        
+        if (!application.isPresent() || !address.isPresent()) {
+            return Optional.empty();
+        }
+        
+        Optional<BlackboardAttribute> progName = application
+                .flatMap((app) -> getAttr(TSK_PROG_NAME, app.getApplicationIdentifier()));
+        
+        Optional<BlackboardAttribute> location = address
+                .flatMap((addr) -> getAttr(TSK_LOCATION, addr.getDescription()));
+        
+        Optional<BlackboardAttribute> dateTime = getTimeStampAttr(TSK_DATETIME, trace.getCreatedTime());
+        
+        Optional<BlackboardAttribute> name = getSourcesFromTarget(mapping, trace.getId(), Location.class).stream()
+                .map(loc -> getAttr(TSK_NAME, loc.getName()))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .findFirst();
+        
+        return Optional.of(content.newDataArtifact(TSK_GPS_ROUTE, getFiltered(progName, location, dateTime, name)));
+    }
 
-            addToOutput(new BlankRelationshipNode()
-                    .setSource(export.getId())
-                    .setTarget(this.uuidService.createUUID(associatedArtifact)), output);
+    private Optional<DataArtifact> importRemoteDrive(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        // this may be ambiguous with the PathRelation
+        // order is assumed for import
+        
+        if (!(ucoObject instanceof Trace)) {
+            return Optional.empty();
         }
 
-        addToOutput(export, output);
+        List<PathRelation> pathRels = getChildren((Trace) ucoObject, PathRelation.class);
+        
+        if (pathRels.size() < 2) {
+            return Optional.empty();
+        }
+        
+        Optional<BlackboardAttribute> remotePath = getAttr(TSK_REMOTE_PATH, pathRels.get(0).getPath());
+        
+        if (!remotePath.isPresent()) {
+            return Optional.empty();
+        }
+        
+        Optional<BlackboardAttribute> localPath = getAttr(TSK_LOCAL_PATH, pathRels.get(1).getPath());
+        
+        return Optional.of(content.newDataArtifact(TSK_REMOTE_DRIVE, getFiltered(remotePath, localPath)));
     }
 
-    private void assembleGPSRoute(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Trace export = new Trace(uuid)
-                .addBundle(new Application()
-                        .setApplicationIdentifier(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PROG_NAME)));
-        export.setCreatedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME));
+    private Optional<BlackboardArtifact> importAccount(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        // going through communications manager to create account
+        
+        if (!(ucoObject instanceof Trace)) {
+            return Optional.empty();
+        }
 
-        SimpleAddress simpleAddress = new SimpleAddress();
-        simpleAddress.setDescription(getValueIfPresent(artifact, StandardAttributeTypes.TSK_LOCATION));
-        export.addBundle(simpleAddress);
-
-        Location location = new BlankLocationNode();
-        location.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_NAME));
-
-        addToOutput(export, output);
-        addToOutput(location, output);
-        addToOutput(new BlankRelationshipNode()
-                .setSource(location.getId())
-                .setTarget(export.getId()), output);
+        Trace trace = (Trace) ucoObject;
+        
+        List<Account> accounts = getChildren(trace, Account.class);
+        
+        if (accounts.isEmpty()) {
+            return Optional.empty();
+        }
+        
+        Map<BlackboardAttribute.Type, String> attrMapping = new HashMap<>();
+        for (Account account : accounts) {
+            if (account.getAccountType() != null) {
+                if (account.getName() != null) {
+                    attrMapping.put(TSK_SET_NAME, account.getName());
+                    
+                    if (account.getAccountIdentifier() != null) {
+                         attrMapping.put(TSK_CARD_NUMBER, account.getAccountIdentifier());
+                    }
+                } else {
+                    attrMapping.put(TSK_ACCOUNT_TYPE, account.getAccountType());
+                
+                    if (account.getAccountIdentifier() != null) {
+                        attrMapping.put(TSK_ID, account.getAccountIdentifier());
+                    }
+                }
+            }
+        }
+        
+        CommunicationsManager commManager = this.sleuthkitCase.getCommunicationsManager();
+        
+        String accountTypeStr = attrMapping.remove(TSK_ACCOUNT_TYPE);
+        if (accountTypeStr == null) {
+            return Optional.empty();
+        }
+        
+        org.sleuthkit.datamodel.Account.Type accountType = commManager.getAccountType(accountTypeStr);
+        if (accountType == null) {
+            accountType = commManager.addAccountType(accountTypeStr, accountTypeStr);
+        }
+        
+        String tskId = attrMapping.get(TSK_CARD_NUMBER);
+        if (tskId == null) {
+            tskId = attrMapping.get(TSK_ID);
+        }
+        
+        AccountFileInstance instance = commManager.createAccountFileInstance(accountType, tskId, CASE_UCO_SOURCE, content);
+        
+        Optional<BlackboardAttribute> setName = getAttr(TSK_SET_NAME, attrMapping.get(TSK_SET_NAME));
+        if (setName.isPresent()) {
+            instance.addAttribute(setName.get());
+        }
+        
+        return instance;
     }
 
-    private void assembleRemoteDrive(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Trace export = new Trace(uuid)
-                .addBundle(new PathRelation()
-                        .setPath(getValueIfPresent(artifact, StandardAttributeTypes.TSK_REMOTE_PATH)))
-                .addBundle(new PathRelation()
-                        .setPath(getValueIfPresent(artifact, StandardAttributeTypes.TSK_LOCAL_PATH)));
+    private Optional<AnalysisResult> importEncryptionSuspected(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        // potentially ambiguous assertion
+        
+        Optional<BlackboardAttribute> comment = Optional.ofNullable((ucoObject instanceof Assertion) ? ((Assertion) ucoObject) : null)
+                .flatMap((asrtn) -> getAttr(TSK_COMMENT, asrtn.getStatement()));
 
-        addToOutput(export, output);
-    }
+        if (!comment.isPresent()) {
+            return Optional.empty();
+        }
 
-    private void assembleAccount(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Account account = new Account()
-                .setAccountType(getValueIfPresent(artifact, StandardAttributeTypes.TSK_ACCOUNT_TYPE))
-                .setAccountIdentifier(getValueIfPresent(artifact, StandardAttributeTypes.TSK_ID));
-
-        Account creditCardAccount = new Account()
-                .setAccountIdentifier(getValueIfPresent(artifact, StandardAttributeTypes.TSK_CARD_NUMBER));
-
-        creditCardAccount.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_SET_NAME));
-        Trace export = new Trace(uuid)
-                .addBundle(account)
-                .addBundle(creditCardAccount);
-
-        addToOutput(export, output);
-    }
-
-    private void assembleEncryptionSuspected(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Assertion export = new Assertion(uuid)
-                .setStatement(getValueIfPresent(artifact, StandardAttributeTypes.TSK_COMMENT));
-
-        addToOutput(export, output);
+        return Optional.of(content.newAnalysisResult(
+                TSK_ENCRYPTION_SUSPECTED, Score.SCORE_UNKNOWN, 
+                null, null, null, 
+                getFiltered(comment)).getAnalysisResult());
     }
 
     
     private Optional<AnalysisResult> importObjectDetected(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
         // potentially ambiguous assertion
+        
         Optional<Assertion> assertion = Optional.ofNullable((ucoObject instanceof Assertion) ? ((Assertion) ucoObject) : null);
 
         Optional<BlackboardAttribute> comment = assertion.flatMap((asrtn) -> getAttr(TSK_COMMENT, asrtn.getStatement()));
@@ -1341,7 +1444,7 @@ public class CaseUcoImporter {
         return Optional.of(content.newDataArtifact(TSK_WIFI_NETWORK, getFiltered(ssid, dateTime, deviceId)));
     }
 
-    private Optional<DataArtifact> assembleDeviceInfo(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+    private Optional<DataArtifact> importDeviceInfo(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
         if (!(ucoObject instanceof Trace)) {
             return Optional.empty();
         }
