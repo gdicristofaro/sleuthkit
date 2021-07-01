@@ -26,6 +26,7 @@ import java.time.format.DateTimeParseException;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +36,7 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import static org.sleuthkit.caseuco.StandardAttributeTypes.TSK_DEVICE_NAME;
 import static org.sleuthkit.caseuco.StandardAttributeTypes.TSK_EMAIL_FROM;
@@ -51,7 +53,6 @@ import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_INSTALLED_PROG
 import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_INTERESTING_FILE_HIT;
 import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_MESSAGE;
 import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_METADATA_EXIF;
-import static org.sleuthkit.datamodel.BlackboardArtifact.ARTIFACT_TYPE.TSK_OS_ACCOUNT;
 import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_OS_INFO;
 import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_RECENT_OBJECT;
 import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_SERVICE_ACCOUNT;
@@ -101,12 +102,14 @@ import org.sleuthkit.datamodel.VolumeSystem;
 import org.sleuthkit.datamodel.AbstractFile;
 import org.sleuthkit.datamodel.AccountFileInstance;
 import org.sleuthkit.datamodel.BlackboardArtifact;
+import org.sleuthkit.datamodel.BlackboardArtifact.ARTIFACT_TYPE;
 import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_KEYWORD_HIT;
 import org.sleuthkit.datamodel.BlackboardAttribute;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_ACCOUNT_TYPE;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_ASSOCIATED_ARTIFACT;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_CALENDAR_ENTRY_TYPE;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_CARD_NUMBER;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_CATEGORY;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_COMMENT;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_COUNT;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DATETIME;
@@ -120,11 +123,18 @@ import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DEVICE_ID;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DEVICE_MAKE;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DEVICE_MODEL;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DIRECTION;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DISPLAY_NAME;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DOMAIN;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_EMAIL;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_EMAIL_HOME;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_EMAIL_OFFICE;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_EMAIL_REPLYTO;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_FLAG;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_GEO_ALTITUDE;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_GEO_LATITUDE;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_GEO_LONGITUDE;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_GEO_TRACKPOINTS;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_GROUPS;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_HEADERS;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_ICCID;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_ID;
@@ -138,19 +148,27 @@ import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_NAME;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_NAME_PERSON;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_ORGANIZATION;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_OWNER;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PASSWORD;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PATH;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PHONE_NUMBER;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PHONE_NUMBER_FROM;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PHONE_NUMBER_HOME;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PHONE_NUMBER_MOBILE;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PHONE_NUMBER_OFFICE;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PHONE_NUMBER_TO;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PROCESSOR_ARCHITECTURE;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PRODUCT_ID;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PROG_NAME;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_READ_STATUS;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_REMOTE_PATH;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_SET_NAME;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_SSID;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_TEMP_DIR;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_THREAD_ID;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_TL_EVENT_TYPE;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_URL;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_USER_ID;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_USER_NAME;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_VERSION;
 import org.sleuthkit.datamodel.CommunicationsManager;
 import org.sleuthkit.datamodel.Content;
@@ -222,6 +240,9 @@ public class CaseUcoImporter {
 
         Long getDataSourceId();
     }
+
+    @SuppressWarnings("deprecation")
+    private static final BlackboardArtifact.Type TSK_OS_ACCOUNT = new BlackboardArtifact.Type(ARTIFACT_TYPE.TSK_OS_ACCOUNT);
 
     private static final String INCLUDE_PARENT_CHILD_RELATIONSHIPS_PROP = "exporter.relationships.includeParentChild";
     private static final String DEFAULT_PARENT_CHILD_RELATIONSHIPS_VALUE = "true";
@@ -859,168 +880,246 @@ public class CaseUcoImporter {
         addToOutput(headerRawNode, output);
     }
 
-    private void assembleWebSearchQuery(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Trace applicationNode = new BlankTraceNode()
-                .addBundle(new Application()
-                        .setApplicationIdentifier(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PROG_NAME)));
+    private Optional<BlackboardArtifact> importWebSearchQuery(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        if (!(ucoObject instanceof Trace)) {
+            return Optional.empty();
+        }
 
-        Trace export = new Trace(uuid)
-                .addBundle(new Note()
-                        .setText(getValueIfPresent(artifact, StandardAttributeTypes.TSK_TEXT)))
-                .addBundle(new Domain()
-                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DOMAIN)))
-                .addBundle(new ApplicationAccount()
-                        .setApplication(applicationNode));
-        addToOutput(export, output);
-        addToOutput(applicationNode, output);
+        Trace trace = (Trace) ucoObject;
+        ChildMapping childMap = getChildren(trace);
+        
+        Optional<Application> application = childMap.getChild(ApplicationAccount.class)
+                .flatMap(appAcct -> Optional.ofNullable(appAcct.getApplication()))
+                .flatMap(appId -> getByUcoId(mapping, appId, Trace.class))
+                .flatMap(t -> getChild(t, Application.class));
+        
+        Optional<Note> note = childMap.getChild(Note.class);
+        Optional<Domain> domain = childMap.getChild(Domain.class);
+        
+        if (Stream.of(application, note, domain).anyMatch(o -> !o.isPresent())) {
+            return Optional.empty();
+        }
+        
+        Optional<BlackboardAttribute> textAttr = note.flatMap(n -> getAttr(TSK_TEXT, n.getText()));
+        if (!textAttr.isPresent()) {
+            return Optional.empty();
+        }
+        
+        Optional<BlackboardAttribute> progNameAttr = application.flatMap(a -> getAttr(TSK_PROG_NAME, a.getApplicationIdentifier()));
+        Optional<BlackboardAttribute> domainAttr = domain.flatMap(d -> getAttr(TSK_DOMAIN, d.getValue()));
+        
+        return newArtifact(content, TSK_WEB_SEARCH_QUERY, getFiltered(progNameAttr, textAttr, domainAttr));
     }
 
-    private void assembleOsInfo(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Identity registeredOwnerNode = new BlankIdentityNode();
-        registeredOwnerNode.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_OWNER));
-        Identity registeredOrganizationNode = new BlankIdentityNode();
-        registeredOrganizationNode.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_ORGANIZATION));
+    private Optional<BlackboardArtifact> importOsInfo(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        if (!(ucoObject instanceof Trace)) {
+            return Optional.empty();
+        }
 
-        OperatingSystem operatingSystem = new OperatingSystem()
-                .setInstallDate(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME))
-                .setVersion(getValueIfPresent(artifact, StandardAttributeTypes.TSK_VERSION));
-        operatingSystem.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PROG_NAME));
+        Trace trace = (Trace) ucoObject;
+        ChildMapping childMap = getChildren(trace);
 
-        EnvironmentVariable envVar = new EnvironmentVariable()
-                .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_TEMP_DIR));
-        envVar.setName("TEMP");
-        Trace tempDirectoryNode = new BlankTraceNode()
-                .addBundle(envVar);
+        Optional<OperatingSystem> operatingSystem = childMap.getChild(OperatingSystem.class);
+        Optional<DomainName> domainName = childMap.getChild(DomainName.class);
+        Optional<Device> device = childMap.getChild(Device.class);
+        Optional<ComputerSpecification> computerSpec = childMap.getChild(ComputerSpecification.class);
+        Optional<WindowsComputerSpecification> winComputerSpec = childMap.getChild(WindowsComputerSpecification.class);
 
-        Trace export = new Trace(uuid)
-                .addBundle(operatingSystem)
-                .addBundle(new DomainName()
-                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DOMAIN)))
-                .addBundle(new Device()
-                        .setSerialNumber(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PRODUCT_ID)))
-                .addBundle(new ComputerSpecification()
-                        .setHostName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_NAME))
-                        .setProcessorArchitecture(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PROCESSOR_ARCHITECTURE)))
-                .addBundle(new WindowsComputerSpecification()
-                        .setRegisteredOrganization(registeredOrganizationNode)
-                        .setRegisteredOwner(registeredOwnerNode)
-                        .setWindowsTempDirectory(tempDirectoryNode));
+        Optional<Identity> registeredOwner = winComputerSpec
+                .flatMap(winSpec -> Optional.ofNullable(winSpec.getRegisteredOwner()))
+                .flatMap(registeredOwnerId -> getByUcoId(mapping, registeredOwnerId, Identity.class));
 
-        addToOutput(export, output);
-        addToOutput(registeredOwnerNode, output);
-        addToOutput(registeredOrganizationNode, output);
-        addToOutput(tempDirectoryNode, output);
+        Optional<Identity> registeredOrganization = winComputerSpec
+                .flatMap(winSpec -> Optional.ofNullable(winSpec.getRegisteredOrganization()))
+                .flatMap(registeredOrgId -> getByUcoId(mapping, registeredOrgId, Identity.class));
+
+        Optional<EnvironmentVariable> tempDirEnvVar = winComputerSpec
+                .flatMap(winSpec -> Optional.ofNullable(winSpec.getWindowsTempDirectory()))
+                .flatMap(tempId -> getByUcoId(mapping, tempId, Trace.class))
+                .flatMap(t -> getChild(t, EnvironmentVariable.class));
+        
+        if (Stream.of(operatingSystem, domainName, device, computerSpec, winComputerSpec, 
+                registeredOwner, registeredOrganization, tempDirEnvVar).anyMatch(o -> !o.isPresent())) {
+            return Optional.empty();
+        }
+
+        Optional<BlackboardAttribute> progNameAttr = operatingSystem.flatMap(o -> getAttr(TSK_PROG_NAME, o.getName()));
+        
+        if (!progNameAttr.isPresent()) {
+            return Optional.empty();
+        }
+        
+        Optional<BlackboardAttribute> ownerAttr = registeredOwner.flatMap(o -> getAttr(TSK_OWNER, o.getName()));
+        Optional<BlackboardAttribute> orgAttr = registeredOrganization.flatMap(o -> getAttr(TSK_ORGANIZATION, o.getName()));
+        Optional<BlackboardAttribute> tempAttr = tempDirEnvVar.flatMap(t -> getAttr(TSK_TEMP_DIR, t.getName()));
+        Optional<BlackboardAttribute> dateTimeAttr = operatingSystem.flatMap(o -> getTimeStampAttr(TSK_DATETIME, o.getInstallDate()));
+        Optional<BlackboardAttribute> versionAttr = operatingSystem.flatMap(o -> getAttr(TSK_VERSION, o.getVersion()));
+        Optional<BlackboardAttribute> tempDirAttr = tempDirEnvVar.flatMap(o -> getAttr(TSK_TEMP_DIR, o.getValue()));
+        Optional<BlackboardAttribute> domainAttr = domainName.flatMap(o -> getAttr(TSK_DOMAIN, o.getValue()));
+        Optional<BlackboardAttribute> productIdAttr = device.flatMap(o -> getAttr(TSK_PRODUCT_ID, o.getSerialNumber()));
+        Optional<BlackboardAttribute> nameAttr = computerSpec.flatMap(c -> getAttr(TSK_NAME, c.getName()));
+        Optional<BlackboardAttribute> architectureAttr = computerSpec.flatMap(c -> getAttr(TSK_PROCESSOR_ARCHITECTURE, c.getProcessorArchitecture()));
+
+        return newArtifact(content, TSK_OS_INFO,
+                getFiltered(ownerAttr, orgAttr, tempAttr, dateTimeAttr, versionAttr, progNameAttr,
+                        tempDirAttr, domainAttr, productIdAttr, nameAttr, architectureAttr));
     }
 
-    private void assembleOsAccount(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Trace export = new Trace(uuid)
-                .addBundle(new EmailAddress()
-                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_EMAIL)))
-                .addBundle(new PathRelation()
-                        .setPath(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PATH)))
-                .addBundle(new WindowsAccount()
-                        .setGroups(getValueIfPresent(artifact, StandardAttributeTypes.TSK_GROUPS)));
+    private Optional<BlackboardArtifact> importOsAccount(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        if (!(ucoObject instanceof Trace)) {
+            return Optional.empty();
+        }
 
-        export.setTag(getValueIfPresent(artifact, StandardAttributeTypes.TSK_FLAG));
+        Trace trace = (Trace) ucoObject;
+        ChildMapping childMap = getChildren(trace);
 
-        DigitalAccount digitalAccount = new DigitalAccount()
-                .setDisplayName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DISPLAY_NAME))
-                .setLastLoginTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_ACCESSED));
-        digitalAccount.setDescription(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DESCRIPTION));
+        Optional<EmailAddress> emailAddr = childMap.getChild(EmailAddress.class);
+        Optional<PathRelation> pathRel = childMap.getChild(PathRelation.class);
+        Optional<WindowsAccount> windowsAcct = childMap.getChild(WindowsAccount.class);
+        Optional<DigitalAccount> digitalAcct = childMap.getChild(DigitalAccount.class);
+        Optional<Account> account = childMap.getChild(Account.class);
 
-        export.addBundle(digitalAccount);
+        Optional<Identity> owner = account
+                .flatMap(a -> Optional.ofNullable(a.getOwner()))
+                .flatMap(ownerId -> getByUcoId(mapping, ownerId, Identity.class));
 
-        Identity ownerNode = new BlankIdentityNode();
-        ownerNode.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_NAME));
+        if (Stream.of(emailAddr, pathRel, windowsAcct, digitalAcct, account, owner).anyMatch(o -> !o.isPresent())) {
+            return Optional.empty();
+        }
 
-        Account account = new Account()
-                .setAccountType(getValueIfPresent(artifact, StandardAttributeTypes.TSK_ACCOUNT_TYPE))
-                .setOwner(ownerNode)
-                .setAccountIdentifier(getValueIfPresent(artifact, StandardAttributeTypes.TSK_USER_ID));
-        account.setCreatedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_CREATED));
+        Optional<BlackboardAttribute> emailAttr = emailAddr.flatMap(e -> getAttr(TSK_EMAIL, e.getValue()));
+        Optional<BlackboardAttribute> pathAttr = pathRel.flatMap(e -> getAttr(TSK_PATH, e.getPath()));
+        Optional<BlackboardAttribute> groupsAttr = windowsAcct.flatMap(e -> getAttr(TSK_GROUPS, e.getGroups()));
+        Optional<BlackboardAttribute> flagAttr = getAttr(TSK_FLAG, trace.getTag());
+        Optional<BlackboardAttribute> displayNameAttr = digitalAcct.flatMap(da -> getAttr(TSK_DISPLAY_NAME, da.getDisplayName()));
+        Optional<BlackboardAttribute> dateTimeAttr = digitalAcct.flatMap(da -> getAttr(TSK_DATETIME_ACCESSED, da.getLastLoginTime()));
+        Optional<BlackboardAttribute> descriptionAttr = digitalAcct.flatMap(da -> getAttr(TSK_DESCRIPTION, da.getDescription()));
+        Optional<BlackboardAttribute> nameAttr = owner.flatMap(o -> getAttr(TSK_NAME, o.getName()));
 
-        export.addBundle(account);
+        Optional<BlackboardAttribute> accountTypeAttr = account.flatMap(a -> getAttr(TSK_ACCOUNT_TYPE, a.getAccountType()));
+        Optional<BlackboardAttribute> userIdAttr = account.flatMap(a -> getAttr(TSK_USER_ID, a.getAccountIdentifier()));
+        Optional<BlackboardAttribute> dateTimeCreatedAttr = account.flatMap(a -> getTimeStampAttr(TSK_DATETIME_CREATED, a.getCreatedTime()));
 
-        addToOutput(export, output);
-        addToOutput(ownerNode, output);
+        return newArtifact(content, TSK_OS_ACCOUNT,
+                getFiltered(emailAttr, pathAttr, groupsAttr, flagAttr, displayNameAttr, dateTimeAttr,
+                        descriptionAttr, nameAttr, accountTypeAttr, userIdAttr, dateTimeAttr));
     }
 
-    private void assembleServiceAccount(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Trace inReplyToNode = new BlankTraceNode()
-                .addBundle(new EmailAddress()
-                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_EMAIL_REPLYTO)));
+    private Optional<BlackboardArtifact> importServiceAccount(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        // this assumes ordering of output for digital accounts
+        if (!(ucoObject instanceof Trace)) {
+            return Optional.empty();
+        }
 
-        Trace export = new Trace(uuid)
-                .addBundle(new Account()
-                        .setAccountType(getValueIfPresent(artifact, StandardAttributeTypes.TSK_CATEGORY)))
-                .addBundle(new DomainName()
-                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DOMAIN)))
-                .addBundle(new EmailMessage()
-                        .setInReplyTo(inReplyToNode))
-                .addBundle(new DigitalAccount()
-                        .setDisplayName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_NAME)))
-                .addBundle(new AccountAuthentication()
-                        .setPassword(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PASSWORD)))
-                .addBundle(new PathRelation()
-                        .setPath(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PATH)))
-                .addBundle(new URL()
-                        .setFullValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_URL)))
-                .addBundle(new DigitalAccount()
-                        .setDisplayName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_USER_NAME)));
+        Trace trace = (Trace) ucoObject;
+        ChildMapping childMap = getChildren(trace);
 
-        export.setDescription(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DESCRIPTION));
+        Optional<Account> acct = childMap.getChild(Account.class);
+        Optional<DomainName> domain = childMap.getChild(DomainName.class);
 
-        Trace applicationNode = new BlankTraceNode()
-                .addBundle(new Application()
-                        .setApplicationIdentifier(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PROG_NAME)));
+        Optional<EmailAddress> emailAddr = childMap.getChild(EmailMessage.class)
+                .flatMap(message -> Optional.ofNullable(message.getInReplyTo()))
+                .flatMap(replyToId -> getByUcoId(mapping, replyToId, Trace.class))
+                .flatMap(t -> getChild(t, EmailAddress.class));
 
-        ApplicationAccount account = new ApplicationAccount()
-                .setApplication(applicationNode);
-        account.setId(getValueIfPresent(artifact, StandardAttributeTypes.TSK_USER_ID));
-        account.setCreatedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_CREATED));
-        export.addBundle(account);
+        Optional<AccountAuthentication> auth = childMap.getChild(AccountAuthentication.class);
+        Optional<PathRelation> pathRel = childMap.getChild(PathRelation.class);
+        Optional<URL> url = childMap.getChild(URL.class);
 
-        addToOutput(export, output);
-        addToOutput(applicationNode, output);
-        addToOutput(inReplyToNode, output);
+        Optional<ApplicationAccount> appAcct = childMap.getChild(ApplicationAccount.class);
+        Optional<Application> application = appAcct
+                .flatMap(a -> Optional.ofNullable(a.getApplication()))
+                .flatMap(appId -> getByUcoId(mapping, appId, Application.class));
+
+        List<DigitalAccount> digAccts = childMap.getChildren(DigitalAccount.class);
+
+        if (Stream.of(acct, domain, emailAddr, auth, pathRel, url, appAcct, application).anyMatch(opt -> !opt.isPresent()) || digAccts.size() < 2) {
+            return Optional.empty();
+        }
+
+        Optional<BlackboardAttribute> inReplyToAttr = emailAddr.flatMap(e -> getAttr(TSK_EMAIL_REPLYTO, e.getValue()));
+        Optional<BlackboardAttribute> catAttr = acct.flatMap(a -> getAttr(TSK_CATEGORY, a.getAccountType()));
+        Optional<BlackboardAttribute> domainAttr = domain.flatMap(d -> getAttr(TSK_DOMAIN, d.getValue()));
+        Optional<BlackboardAttribute> passwordAttr = auth.flatMap(a -> getAttr(TSK_PASSWORD, a.getPassword()));
+        Optional<BlackboardAttribute> pathAttr = pathRel.flatMap(a -> getAttr(TSK_PATH, a.getPath()));
+        Optional<BlackboardAttribute> urlAttr = url.flatMap(a -> getAttr(TSK_URL, a.getFullValue()));
+        Optional<BlackboardAttribute> descAttr = getAttr(TSK_DESCRIPTION, trace.getDescription());
+        Optional<BlackboardAttribute> progNameAttr = application.flatMap(a -> getAttr(TSK_PROG_NAME, a.getApplicationIdentifier()));
+        Optional<BlackboardAttribute> userIdAttr = acct.flatMap(a -> getAttr(TSK_USER_ID, a.getId()));
+        Optional<BlackboardAttribute> timeCreatedAttr = acct.flatMap(a -> getTimeStampAttr(TSK_DATETIME_CREATED, a.getCreatedTime()));
+
+        if (!progNameAttr.isPresent() || !userIdAttr.isPresent()) {
+            return Optional.empty();
+        }
+
+        List<Facet> facets = trace.getHasPropertyBundle() == null ? Collections.emptyList() : trace.getHasPropertyBundle();
+        Stream<BlackboardAttribute> digAcctAttrs = getFiltered(digAccts.stream()
+                .map((digAcct) -> (facets.indexOf(digAcct) == 3)
+                ? getAttr(TSK_NAME, digAcct.getDisplayName())
+                : getAttr(TSK_USER_NAME, digAcct.getDisplayName())));
+
+        Stream<BlackboardAttribute> remainingAttrs = getFiltered(Stream.of(
+                inReplyToAttr, catAttr, domainAttr, passwordAttr, pathAttr, urlAttr,
+                descAttr, progNameAttr, userIdAttr, timeCreatedAttr));
+
+        return newArtifact(content, TSK_SERVICE_ACCOUNT,
+                Stream.concat(digAcctAttrs, remainingAttrs).collect(Collectors.toList()));
     }
 
-    private void assembleContact(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        EmailAddress homeAddress = new EmailAddress()
-                .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_EMAIL_HOME));
-        homeAddress.setTag("Home");
+    private Optional<BlackboardArtifact> importContact(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        if (!(ucoObject instanceof Trace)) {
+            return Optional.empty();
+        }
 
-        EmailAddress workAddress = new EmailAddress()
-                .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_EMAIL_OFFICE));
-        workAddress.setTag("Work");
+        ChildMapping childMap = getChildren((Trace) ucoObject);
 
-        PhoneAccount homePhone = new PhoneAccount()
-                .setPhoneNumber(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PHONE_NUMBER_HOME));
-        homePhone.setTag("Home");
+        Map<String, EmailAddress> emailAddresses = childMap.getChildren(EmailAddress.class).stream()
+                .collect(Collectors.toMap(eMsg -> eMsg.getTag() == null ? "" : eMsg.getTag(), eMsg -> eMsg, (e1, e2) -> e1));
 
-        PhoneAccount workPhone = new PhoneAccount()
-                .setPhoneNumber(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PHONE_NUMBER_OFFICE));
-        workPhone.setTag("Work");
+        Map<String, PhoneAccount> phoneAccounts = childMap.getChildren(PhoneAccount.class).stream()
+                .collect(Collectors.toMap(phoneAcct -> phoneAcct.getTag() == null ? "" : phoneAcct.getTag(), phoneAcct -> phoneAcct, (p1, p2) -> p1));
 
-        PhoneAccount mobilePhone = new PhoneAccount()
-                .setPhoneNumber(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PHONE_NUMBER_MOBILE));
-        mobilePhone.setTag("Mobile");
+        Optional<EmailAddress> email = Optional.ofNullable(emailAddresses.get(""));
+        Optional<EmailAddress> homeEmail = Optional.ofNullable(emailAddresses.get("Home"));
+        Optional<EmailAddress> workEmail = Optional.ofNullable(emailAddresses.get("Work"));
 
-        Trace export = new Trace(uuid)
-                .addBundle(new URL()
-                        .setFullValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_URL)))
-                .addBundle(new EmailAddress()
-                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_EMAIL)))
-                .addBundle(homeAddress)
-                .addBundle(workAddress)
-                .addBundle(new Contact()
-                        .setContactName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_NAME)))
-                .addBundle(new PhoneAccount()
-                        .setPhoneNumber(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PHONE_NUMBER)))
-                .addBundle(homePhone)
-                .addBundle(workPhone)
-                .addBundle(mobilePhone);
-        addToOutput(export, output);
+        Optional<PhoneAccount> phone = Optional.ofNullable(phoneAccounts.get(""));
+        Optional<PhoneAccount> homePhone = Optional.ofNullable(phoneAccounts.get("Home"));
+        Optional<PhoneAccount> workPhone = Optional.ofNullable(phoneAccounts.get("Work"));
+        Optional<PhoneAccount> mobilePhone = Optional.ofNullable(phoneAccounts.get("Mobile"));
+
+        Optional<URL> url = childMap.getChild(URL.class);
+
+        Optional<Contact> contact = childMap.getChild(Contact.class);
+
+        if (!email.isPresent() || !homeEmail.isPresent() || !workEmail.isPresent()
+                || !phone.isPresent() || !homePhone.isPresent() || !workPhone.isPresent() || !mobilePhone.isPresent()
+                || !url.isPresent() || !contact.isPresent()) {
+
+            return Optional.empty();
+        }
+
+        Optional<BlackboardAttribute> emailAttr = email.flatMap(emsg -> getAttr(TSK_EMAIL, emsg.getValue()));
+        Optional<BlackboardAttribute> homeEmailAttr = homeEmail.flatMap(emsg -> getAttr(TSK_EMAIL_HOME, emsg.getValue()));
+        Optional<BlackboardAttribute> officeEmailAttr = workEmail.flatMap(emsg -> getAttr(TSK_EMAIL_OFFICE, emsg.getValue()));
+
+        Optional<BlackboardAttribute> phoneAttr = phone.flatMap(p -> getAttr(TSK_PHONE_NUMBER, p.getPhoneNumber()));
+        Optional<BlackboardAttribute> homePhoneAttr = homePhone.flatMap(p -> getAttr(TSK_PHONE_NUMBER_HOME, p.getPhoneNumber()));
+        Optional<BlackboardAttribute> officePhoneAttr = workPhone.flatMap(p -> getAttr(TSK_PHONE_NUMBER_OFFICE, p.getPhoneNumber()));
+        Optional<BlackboardAttribute> mobilePhoneAttr = mobilePhone.flatMap(p -> getAttr(TSK_PHONE_NUMBER_MOBILE, p.getPhoneNumber()));
+
+        Optional<BlackboardAttribute> nameAttr = contact.flatMap(c -> getAttr(TSK_NAME, c.getContactName()));
+
+        List<BlackboardAttribute> attrs = getFiltered(emailAttr, homeEmailAttr, officeEmailAttr, phoneAttr, homePhoneAttr, officePhoneAttr, mobilePhoneAttr, nameAttr);
+
+        if (attrs.isEmpty()) {
+            return Optional.empty();
+        }
+
+        url.flatMap(u -> getAttr(TSK_URL, u.getFullValue()))
+                .ifPresent(attrs::add);
+
+        return newArtifact(content, TSK_CONTACT, attrs);
     }
 
     private Optional<BlackboardArtifact> importMessage(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
@@ -1029,9 +1128,10 @@ public class CaseUcoImporter {
         }
 
         Trace trace = (Trace) ucoObject;
+        ChildMapping childMapping = getChildren(trace);
 
-        Optional<Message> message = getChild(trace, Message.class);
-        
+        Optional<Message> message = childMapping.getChild(Message.class);
+
         Optional<org.sleuthkit.datamodel.Account.Type> messageTypeOpt = message
                 .flatMap(msg -> Optional.ofNullable(msg.getApplication()))
                 .flatMap(relatedId -> getByUcoId(mapping, relatedId, Trace.class))
@@ -1044,31 +1144,31 @@ public class CaseUcoImporter {
                     }
                     return Optional.ofNullable(accountType);
                 });
-        
+
         Optional<String> textOpt = message.flatMap(msg -> Optional.ofNullable(msg.getMessageText()));
-        
+
         if (!messageTypeOpt.isPresent() || !textOpt.isPresent()) {
             return Optional.empty();
         }
-        
+
         org.sleuthkit.datamodel.Account.Type messageType = messageTypeOpt.get();
         String text = textOpt.get();
-        
-        Optional<EmailMessage> emailMessage = getChild(trace, EmailMessage.class);
-        Optional<PhoneAccount> phoneAccount = getChild(trace, PhoneAccount.class);
-        Optional<PhoneCall> phoneCall = getChild(trace, PhoneCall.class);
-        Optional<SMSMessage> smsMessage = getChild(trace, SMSMessage.class);
+
+        Optional<EmailMessage> emailMessage = childMapping.getChild(EmailMessage.class);
+        Optional<PhoneAccount> phoneAccount = childMapping.getChild(PhoneAccount.class);
+        Optional<PhoneCall> phoneCall = childMapping.getChild(PhoneCall.class);
+        Optional<SMSMessage> smsMessage = childMapping.getChild(SMSMessage.class);
 
         List<String> attachments = getFiltered(
-                getChildren(trace, Attachment.class).stream()
+                childMapping.getChildren(Attachment.class).stream()
                         .map(attach -> Optional.ofNullable(attach.getUrl())))
                 .collect(Collectors.toList());
-        
+
         Optional<Long> dateTime = message.flatMap(msg -> getEpochTime(msg.getSentTime()));
         Optional<String> direction = message.flatMap(msg -> Optional.ofNullable(msg.getMessageType()));
         Optional<String> threadId = message.flatMap(msg -> Optional.ofNullable(msg.getId()));
         Optional<String> phoneNumber = phoneAccount.flatMap(phoneAcct -> Optional.ofNullable(phoneAcct.getPhoneNumber()));
-        
+
         MessageReadStatus readStatus = smsMessage
                 .flatMap(sms -> Optional.ofNullable(sms.getIsRead()))
                 .map(isRead -> isRead ? MessageReadStatus.READ : MessageReadStatus.UNREAD)
@@ -1092,9 +1192,13 @@ public class CaseUcoImporter {
                 .flatMap(relatedTrace -> getChild(relatedTrace, PhoneAccount.class))
                 .flatMap(addr -> Optional.ofNullable(addr.getPhoneNumber()));
 
-        CommunicationArtifactsHelper helper = new CommunicationArtifactsHelper(sleuthkitCase, CASE_UCO_SOURCE, content, messageType.get());
-        
-        BlackboardArtifact artifact = helper.addMessage(messageType, direction, CASE_UCO_SOURCE, attachments, 0, readStatus, CASE_UCO_SOURCE, CASE_UCO_SOURCE, CASE_UCO_SOURCE, otherAttributesList)
+        CommunicationArtifactsHelper helper = new CommunicationArtifactsHelper(sleuthkitCase, CASE_UCO_SOURCE, content, messageType);
+
+        BlackboardArtifact artifact = helper.addMessage(messageType.getTypeName(), direction, sender, recipient,
+                dateTime.orElse(0L), readStatus, subject, text, threadId.orElse(null),
+                otherAttrs);
+
+        return Optional.of(artifact);
     }
 
     private Optional<BlackboardArtifact> importMetadataExif(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
@@ -1974,14 +2078,46 @@ public class CaseUcoImporter {
                 .collect(Collectors.toList());
     }
 
-    private <T extends UcoObject> List<T> getChildren(Trace parentTrace, Class<T> clazz) {
+    private static class ChildMapping {
+
+        private final Map<Class<? extends Facet>, List<Facet>> mapping;
+
+        ChildMapping(List<Facet> facets) {
+            Stream<? extends Facet> objStream = (facets != null) ? facets.stream() : Stream.empty();
+            this.mapping = objStream.collect(Collectors.groupingBy(obj -> obj.getClass()));
+        }
+
+        <T extends UcoObject> Optional<T> getChild(Class<T> clazz) {
+            List<Facet> objs = mapping.get(clazz);
+            if (objs == null) {
+                return Optional.empty();
+            }
+
+            return objs.stream().map(f -> (T) f).findFirst();
+        }
+
+        <T extends UcoObject> List<T> getChildren(Class<T> clazz) {
+            List<Facet> objs = mapping.get(clazz);
+            if (objs == null) {
+                return Collections.emptyList();
+            }
+
+            return UnmodifiableList.of((List<T>) (List<?>) objs);
+        }
+    }
+
+    private ChildMapping getChildren(Trace parentTrace) {
+        return new ChildMapping(parentTrace.getHasPropertyBundle());
+    }
+
+    private <T extends Facet> List<T> getChildren(Trace parentTrace, Class<T> clazz) {
         return parentTrace.getHasPropertyBundle().stream()
                 .filter((facet) -> clazz.isInstance(facet))
                 .map((facet) -> (T) facet)
                 .collect(Collectors.toList());
     }
 
-    private <T extends UcoObject> Optional<T> getChild(Trace parentTrace, Class<T> clazz) {
+    private <T extends Facet> Optional<T> getChild(Trace parentTrace, Class<T> clazz) {
         return parentTrace.getHasPropertyBundle().stream()
                 .filter((facet) -> clazz.isInstance(facet))
                 .map((facet) -> (T) facet)
@@ -1992,7 +2128,7 @@ public class CaseUcoImporter {
         return getEpochTime(value)
                 .flatMap((epochTime) -> getAttr(type, epochTime));
     }
-   
+
     private Optional<BlackboardAttribute> getAttr(BlackboardAttribute.Type type, Double value) {
         return Optional.ofNullable(value)
                 .map(timeVal -> new BlackboardAttribute(type, CASE_UCO_SOURCE, timeVal));
