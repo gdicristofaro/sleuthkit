@@ -37,6 +37,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import static org.sleuthkit.caseuco.StandardAttributeTypes.TSK_DEVICE_NAME;
+import static org.sleuthkit.caseuco.StandardAttributeTypes.TSK_EMAIL_FROM;
+import static org.sleuthkit.caseuco.StandardAttributeTypes.TSK_MESSAGE_TYPE;
 import static org.sleuthkit.caseuco.StandardAttributeTypes.TSK_TEXT;
 
 import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_CONTACT;
@@ -141,9 +143,11 @@ import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PHONE_NUMBER;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PHONE_NUMBER_FROM;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PHONE_NUMBER_TO;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PROG_NAME;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_READ_STATUS;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_REMOTE_PATH;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_SET_NAME;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_SSID;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_THREAD_ID;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_TL_EVENT_TYPE;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_URL;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_USER_ID;
@@ -158,6 +162,8 @@ import org.sleuthkit.datamodel.blackboardutils.attributes.GeoTrackPoints;
 import org.sleuthkit.datamodel.blackboardutils.attributes.MessageAttachments;
 import org.sleuthkit.datamodel.SleuthkitCase;
 import org.sleuthkit.datamodel.TskData.DbType;
+import org.sleuthkit.datamodel.blackboardutils.CommunicationArtifactsHelper;
+import org.sleuthkit.datamodel.blackboardutils.CommunicationArtifactsHelper.MessageReadStatus;
 
 /**
  * Exports Sleuth Kit DataModel objects to CASE. The CASE JSON output is
@@ -1017,7 +1023,7 @@ public class CaseUcoImporter {
         addToOutput(export, output);
     }
 
-    private Optional<BlackboardArtifact> importMessage(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException, BlackboardJsonAttrUtil.InvalidJsonException {
+    private Optional<BlackboardArtifact> importMessage(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
         if (!(ucoObject instanceof Trace)) {
             return Optional.empty();
         }
@@ -1025,62 +1031,70 @@ public class CaseUcoImporter {
         Trace trace = (Trace) ucoObject;
 
         Optional<Message> message = getChild(trace, Message.class);
-        Optional<EmailMessage> message = getChild(trace, EmailMessage.class);
-        Optional<PhoneAccount> message = getChild(trace, PhoneAccount.class);
-        Optional<Message> message = getChild(trace, Message.class);
-
-        Trace applicationNode = new BlankTraceNode()
-                .addBundle(new Application()
-                        .setApplicationIdentifier(getValueIfPresent(artifact, StandardAttributeTypes.TSK_MESSAGE_TYPE)));
-
-        Trace senderNode = new BlankTraceNode()
-                .addBundle(new EmailAddress()
-                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_EMAIL_FROM)));
-
-        Trace fromNode = new BlankTraceNode()
-                .addBundle(new PhoneAccount()
-                        .setPhoneNumber(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PHONE_NUMBER_FROM)));
-
-        Trace toNode = new BlankTraceNode()
-                .addBundle(new PhoneAccount()
-                        .setPhoneNumber(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PHONE_NUMBER_TO)));
-
-        Trace export = new Trace(uuid)
-                .addBundle(new Message()
-                        .setMessageText(getValueIfPresent(artifact, StandardAttributeTypes.TSK_TEXT))
-                        .setApplication(applicationNode)
-                        .setSentTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME))
-                        .setMessageType(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DIRECTION))
-                        .setId(getValueIfPresent(artifact, StandardAttributeTypes.TSK_THREAD_ID)))
-                .addBundle(new EmailMessage()
-                        .setSender(senderNode))
-                .addBundle(new PhoneAccount()
-                        .setPhoneNumber(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PHONE_NUMBER)))
-                .addBundle(new PhoneCall()
-                        .setFrom(fromNode)
-                        .setTo(toNode))
-                .addBundle(new SMSMessage()
-                        .setIsRead(getIntegerIfPresent(artifact, StandardAttributeTypes.TSK_READ_STATUS)));
-
-        BlackboardAttribute attachments = artifact.getAttribute(StandardAttributeTypes.TSK_ATTACHMENTS);
-        if (attachments != null) {
-            MessageAttachments attachmentsContainer = BlackboardJsonAttrUtil.fromAttribute(attachments, MessageAttachments.class);
-            List<MessageAttachments.Attachment> tskAttachments = new ArrayList<>();
-            tskAttachments.addAll(attachmentsContainer.getUrlAttachments());
-            tskAttachments.addAll(attachmentsContainer.getFileAttachments());
-
-            tskAttachments.forEach((tskAttachment) -> {
-                export.addBundle(new Attachment()
-                        .setUrl(tskAttachment.getLocation())
-                );
-            });
+        
+        Optional<org.sleuthkit.datamodel.Account.Type> messageTypeOpt = message
+                .flatMap(msg -> Optional.ofNullable(msg.getApplication()))
+                .flatMap(relatedId -> getByUcoId(mapping, relatedId, Trace.class))
+                .flatMap(relatedTrace -> getChild(relatedTrace, Application.class))
+                .flatMap(app -> Optional.ofNullable(app.getApplicationIdentifier()))
+                .flatMap(accountTypeStr -> {
+                    org.sleuthkit.datamodel.Account.Type accountType = sleuthkitCase.getCommunicationsManager().getAccountType(accountTypeStr);
+                    if (accountType == null) {
+                        accountType = sleuthkitCase.getCommunicationsManager().addAccountType(accountTypeStr, accountTypeStr);
+                    }
+                    return Optional.ofNullable(accountType);
+                });
+        
+        Optional<String> textOpt = message.flatMap(msg -> Optional.ofNullable(msg.getMessageText()));
+        
+        if (!messageTypeOpt.isPresent() || !textOpt.isPresent()) {
+            return Optional.empty();
         }
+        
+        org.sleuthkit.datamodel.Account.Type messageType = messageTypeOpt.get();
+        String text = textOpt.get();
+        
+        Optional<EmailMessage> emailMessage = getChild(trace, EmailMessage.class);
+        Optional<PhoneAccount> phoneAccount = getChild(trace, PhoneAccount.class);
+        Optional<PhoneCall> phoneCall = getChild(trace, PhoneCall.class);
+        Optional<SMSMessage> smsMessage = getChild(trace, SMSMessage.class);
 
-        addToOutput(export, output);
-        addToOutput(applicationNode, output);
-        addToOutput(senderNode, output);
-        addToOutput(fromNode, output);
-        addToOutput(toNode, output);
+        List<String> attachments = getFiltered(
+                getChildren(trace, Attachment.class).stream()
+                        .map(attach -> Optional.ofNullable(attach.getUrl())))
+                .collect(Collectors.toList());
+        
+        Optional<Long> dateTime = message.flatMap(msg -> getEpochTime(msg.getSentTime()));
+        Optional<String> direction = message.flatMap(msg -> Optional.ofNullable(msg.getMessageType()));
+        Optional<String> threadId = message.flatMap(msg -> Optional.ofNullable(msg.getId()));
+        Optional<String> phoneNumber = phoneAccount.flatMap(phoneAcct -> Optional.ofNullable(phoneAcct.getPhoneNumber()));
+        
+        MessageReadStatus readStatus = smsMessage
+                .flatMap(sms -> Optional.ofNullable(sms.getIsRead()))
+                .map(isRead -> isRead ? MessageReadStatus.READ : MessageReadStatus.UNREAD)
+                .orElse(MessageReadStatus.UNKNOWN);
+
+        Optional<String> emailFrom = emailMessage
+                .flatMap(emsg -> Optional.ofNullable(emsg.getSender()))
+                .flatMap(relatedId -> getByUcoId(mapping, relatedId, Trace.class))
+                .flatMap(relatedTrace -> getChild(relatedTrace, EmailAddress.class))
+                .flatMap(addr -> Optional.ofNullable(addr.getValue()));
+
+        Optional<String> phoneFrom = phoneCall
+                .flatMap(call -> Optional.ofNullable(call.getFrom()))
+                .flatMap(relatedId -> getByUcoId(mapping, relatedId, Trace.class))
+                .flatMap(relatedTrace -> getChild(relatedTrace, PhoneAccount.class))
+                .flatMap(addr -> Optional.ofNullable(addr.getPhoneNumber()));
+
+        Optional<String> phoneTo = phoneCall
+                .flatMap(call -> Optional.ofNullable(call.getTo()))
+                .flatMap(relatedId -> getByUcoId(mapping, relatedId, Trace.class))
+                .flatMap(relatedTrace -> getChild(relatedTrace, PhoneAccount.class))
+                .flatMap(addr -> Optional.ofNullable(addr.getPhoneNumber()));
+
+        CommunicationArtifactsHelper helper = new CommunicationArtifactsHelper(sleuthkitCase, CASE_UCO_SOURCE, content, messageType.get());
+        
+        BlackboardArtifact artifact = helper.addMessage(messageType, direction, CASE_UCO_SOURCE, attachments, 0, readStatus, CASE_UCO_SOURCE, CASE_UCO_SOURCE, CASE_UCO_SOURCE, otherAttributesList)
     }
 
     private Optional<BlackboardArtifact> importMetadataExif(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
@@ -1978,7 +1992,7 @@ public class CaseUcoImporter {
         return getEpochTime(value)
                 .flatMap((epochTime) -> getAttr(type, epochTime));
     }
-
+   
     private Optional<BlackboardAttribute> getAttr(BlackboardAttribute.Type type, Double value) {
         return Optional.ofNullable(value)
                 .map(timeVal -> new BlackboardAttribute(type, CASE_UCO_SOURCE, timeVal));
