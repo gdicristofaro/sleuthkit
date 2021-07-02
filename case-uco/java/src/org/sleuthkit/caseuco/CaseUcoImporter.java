@@ -117,6 +117,8 @@ import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DATETIME_ACCE
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DATETIME_CREATED;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DATETIME_END;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DATETIME_MODIFIED;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DATETIME_RCVD;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DATETIME_SENT;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DATETIME_START;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DESCRIPTION;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DEVICE_ID;
@@ -126,6 +128,8 @@ import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DIRECTION;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DISPLAY_NAME;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_DOMAIN;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_EMAIL;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_EMAIL_BCC;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_EMAIL_CC;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_EMAIL_HOME;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_EMAIL_OFFICE;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_EMAIL_REPLYTO;
@@ -144,6 +148,7 @@ import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_LAST_PRINTED_
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_LOCAL_PATH;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_LOCATION;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_MAC_ADDRESS;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_MSG_ID;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_NAME;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_NAME_PERSON;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_ORGANIZATION;
@@ -163,6 +168,7 @@ import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_READ_STATUS;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_REMOTE_PATH;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_SET_NAME;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_SSID;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_SUBJECT;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_TEMP_DIR;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_THREAD_ID;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_TL_EVENT_TYPE;
@@ -248,6 +254,13 @@ public class CaseUcoImporter {
     private static final String DEFAULT_PARENT_CHILD_RELATIONSHIPS_VALUE = "true";
     private static final String CASE_UCO_SOURCE = "Case Uco Importer";
     private static final String CONTAINED_WITHIN_RELATIONSHIP = "contained-within";
+
+    private static final Map<String, BlackboardAttribute.Type> EMAIL_MSG_TYPES = Collections.unmodifiableMap(new HashMap<>() {{
+        put("text/html", TSK_EMAIL_CONTENT_HTML);
+        put("text/rtf", TSK_EMAIL_CONTENT_PLAIN);
+        put("text/plain", TSK_EMAIL_CONTENT_RTF);
+    }});
+        
     private final Map<String, TimelineEventType> eventTypeMapping;
 
     private final Gson gson;
@@ -793,7 +806,7 @@ public class CaseUcoImporter {
         addToOutput(export, output);
     }
 
-    private void assembleRecentObject(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
+    private Optional<BlackboardArtifact> importRecentObject(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
         Trace export = new Trace(uuid)
                 .addBundle(new Application()
                         .setApplicationIdentifier(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PROG_NAME)));
@@ -820,64 +833,77 @@ public class CaseUcoImporter {
                 .setTarget(uuid), output);
     }
 
-    private void assembleInterestingFileHit(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Assertion export = new Assertion(uuid);
-        export.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_SET_NAME));
-        export.setStatement(getValueIfPresent(artifact, StandardAttributeTypes.TSK_COMMENT));
-        addToOutput(export, output);
+    private Optional<BlackboardArtifact> importInterestingFileHit(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        // only distinguished by assertion requiring a name
+        
+        Optional<Assertion> assertion = getAs(ucoObject, Assertion.class);
+        Optional<BlackboardAttribute> setNameAttr = assertion.flatMap(a -> getAttr(TSK_SET_NAME, a.getName()));
+        
+        if (!setNameAttr.isPresent()) {
+            return Optional.empty();
+        }
+        
+        Optional<BlackboardAttribute> commentAttr = assertion.flatMap(a -> getAttr(TSK_COMMENT, a.getStatement()));
+        
+        return newArtifact(content, TSK_INTERESTING_FILE_HIT, getFiltered(setNameAttr, commentAttr));
     }
 
-    private void assembleEmailMessage(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Trace bccNode = new BlankTraceNode()
-                .addBundle(new EmailAddress()
-                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_EMAIL_BCC)));
-
-        Trace ccNode = new BlankTraceNode()
-                .addBundle(new EmailAddress()
-                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_EMAIL_CC)));
-
-        Trace fromNode = new BlankTraceNode()
-                .addBundle(new EmailAddress()
-                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_EMAIL_FROM)));
-
-        Trace headerRawNode = new BlankTraceNode()
-                .addBundle(new ExtractedString()
-                        .setStringValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_HEADERS)));
-
-        EmailMessage emailMessage = new EmailMessage();
-        String html = getValueIfPresent(artifact, StandardAttributeTypes.TSK_EMAIL_CONTENT_HTML);
-        String plain = getValueIfPresent(artifact, StandardAttributeTypes.TSK_EMAIL_CONTENT_PLAIN);
-        String rtf = getValueIfPresent(artifact, StandardAttributeTypes.TSK_EMAIL_CONTENT_RTF);
-
-        if (html != null) {
-            emailMessage.setBody(html);
-            emailMessage.setContentType("text/html");
-        } else if (rtf != null) {
-            emailMessage.setBody(rtf);
-            emailMessage.setContentType("text/rtf");
-        } else if (plain != null) {
-            emailMessage.setBody(plain);
-            emailMessage.setContentType("text/plain");
+    
+    private Optional<BlackboardArtifact> importEmailMessage(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {       
+        if (!(ucoObject instanceof Trace)) {
+            return Optional.empty();
         }
 
-        Trace export = new Trace(uuid)
-                .addBundle(emailMessage
-                        .setReceivedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_RCVD))
-                        .setSentTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_SENT))
-                        .setBcc(bccNode)
-                        .setCc(ccNode)
-                        .setFrom(fromNode)
-                        .setHeaderRaw(headerRawNode)
-                        .setMessageID(getValueIfPresent(artifact, StandardAttributeTypes.TSK_MSG_ID))
-                        .setSubject(getValueIfPresent(artifact, StandardAttributeTypes.TSK_SUBJECT)))
-                .addBundle(new File()
-                        .setFilePath(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PATH)));
+        Trace trace = (Trace) ucoObject;
+        ChildMapping childMap = getChildren(trace);
+        
+        Optional<EmailMessage> emailMsgOpt = childMap.getChild(EmailMessage.class);
+        Optional<File> file = childMap.getChild(File.class);
+        
+        if (!emailMsgOpt.isPresent() || !file.isPresent()) {
+            return Optional.empty();
+        }
+        
+        EmailMessage emailMsg = emailMsgOpt.get();
+        
+        Optional<BlackboardAttribute> emailMsgAttr = Optional.ofNullable(emailMsg.getContentType())
+                .flatMap(tp -> Optional.ofNullable(EMAIL_MSG_TYPES.get(tp)))
+                .flatMap(attrType -> getAttr(attrType, emailMsg.getBody()));
+        
+        if (!emailMsgAttr.isPresent()) {
+            return Optional.empty();
+        }
+        
+        Optional<BlackboardAttribute> timeReceivedAttr = getTimeStampAttr(TSK_DATETIME_RCVD, emailMsg.getReceivedTime());
+        Optional<BlackboardAttribute> timeSentAttr = getTimeStampAttr(TSK_DATETIME_SENT, emailMsg.getSentTime());
+        Optional<BlackboardAttribute> msgIdAttr = getAttr(TSK_MSG_ID, emailMsg.getMessageID());
+        Optional<BlackboardAttribute> subjectAttr = getAttr(TSK_SUBJECT, emailMsg.getSubject());
 
-        addToOutput(export, output);
-        addToOutput(bccNode, output);
-        addToOutput(ccNode, output);
-        addToOutput(fromNode, output);
-        addToOutput(headerRawNode, output);
+        Optional<BlackboardAttribute> pathAttr = file.flatMap(f -> getAttr(TSK_PATH, f.getFilePath()));
+        
+        Optional<BlackboardAttribute> headerAttr = Optional.ofNullable(emailMsg.getHeaderRaw())
+                .flatMap(headerId -> getByUcoId(mapping, headerId, Trace.class))
+                .flatMap(t -> getChild(t, ExtractedString.class))
+                .flatMap(es -> getAttr(TSK_HEADERS, es.getStringValue()));
+        
+        Optional<BlackboardAttribute> bccAttr = Optional.ofNullable(emailMsg.getBcc())
+                    .flatMap(msgAddrId -> getByUcoId(mapping, msgAddrId, Trace.class))
+                    .flatMap(t -> getChild(t, EmailAddress.class))
+                    .flatMap(ea -> getAttr(TSK_EMAIL_BCC, ea.getValue()));
+        
+        Optional<BlackboardAttribute> ccAttr = Optional.ofNullable(emailMsg.getCc())
+                    .flatMap(msgAddrId -> getByUcoId(mapping, msgAddrId, Trace.class))
+                    .flatMap(t -> getChild(t, EmailAddress.class))
+                    .flatMap(ea -> getAttr(TSK_EMAIL_CC, ea.getValue()));
+        
+        Optional<BlackboardAttribute> fromAttr = Optional.ofNullable(emailMsg.getFrom())
+                    .flatMap(msgAddrId -> getByUcoId(mapping, msgAddrId, Trace.class))
+                    .flatMap(t -> getChild(t, EmailAddress.class))
+                    .flatMap(ea -> getAttr(TSK_EMAIL_FROM, ea.getValue()));
+        
+        return newArtifact(content, TSK_EMAIL_MSG, 
+                getFiltered(emailMsgAttr, timeReceivedAttr, timeSentAttr, msgIdAttr, 
+                        subjectAttr, pathAttr, headerAttr, bccAttr, ccAttr, fromAttr));
     }
 
     private Optional<BlackboardArtifact> importWebSearchQuery(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
