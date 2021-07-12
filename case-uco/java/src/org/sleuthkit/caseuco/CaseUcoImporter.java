@@ -36,11 +36,9 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import static org.sleuthkit.caseuco.StandardAttributeTypes.TSK_DEVICE_NAME;
 import static org.sleuthkit.caseuco.StandardAttributeTypes.TSK_EMAIL_FROM;
-import static org.sleuthkit.caseuco.StandardAttributeTypes.TSK_MESSAGE_TYPE;
 import static org.sleuthkit.caseuco.StandardAttributeTypes.TSK_TEXT;
 
 import static org.sleuthkit.datamodel.BlackboardArtifact.Type.TSK_CONTACT;
@@ -139,6 +137,7 @@ import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_GEO_LATITUDE;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_GEO_LONGITUDE;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_GEO_TRACKPOINTS;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_GROUPS;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_HASH_PHOTODNA;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_HEADERS;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_ICCID;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_ID;
@@ -155,6 +154,7 @@ import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_ORGANIZATION;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_OWNER;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PASSWORD;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PATH;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PATH_SOURCE;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PHONE_NUMBER;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PHONE_NUMBER_FROM;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PHONE_NUMBER_HOME;
@@ -164,17 +164,16 @@ import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PHONE_NUMBER_
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PROCESSOR_ARCHITECTURE;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PRODUCT_ID;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_PROG_NAME;
-import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_READ_STATUS;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_REMOTE_PATH;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_SET_NAME;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_SSID;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_SUBJECT;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_TEMP_DIR;
-import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_THREAD_ID;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_TL_EVENT_TYPE;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_URL;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_USER_ID;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_USER_NAME;
+import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_VALUE;
 import static org.sleuthkit.datamodel.BlackboardAttribute.Type.TSK_VERSION;
 import org.sleuthkit.datamodel.CommunicationsManager;
 import org.sleuthkit.datamodel.Content;
@@ -183,7 +182,6 @@ import org.sleuthkit.datamodel.TimelineEventType;
 import org.sleuthkit.datamodel.TskCoreException;
 import org.sleuthkit.datamodel.blackboardutils.attributes.BlackboardJsonAttrUtil;
 import org.sleuthkit.datamodel.blackboardutils.attributes.GeoTrackPoints;
-import org.sleuthkit.datamodel.blackboardutils.attributes.MessageAttachments;
 import org.sleuthkit.datamodel.SleuthkitCase;
 import org.sleuthkit.datamodel.TskData.DbType;
 import org.sleuthkit.datamodel.blackboardutils.CommunicationArtifactsHelper;
@@ -679,158 +677,268 @@ public class CaseUcoImporter {
         return output;
     }
 
-    private void assembleWebCookie(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Trace export = new Trace(uuid)
-                .addBundle(new URL()
-                        .setFullValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_URL)))
-                .addBundle(new ContentData()
-                        .setDataPayload(getValueIfPresent(artifact, StandardAttributeTypes.TSK_VALUE)));
+    private Optional<BlackboardArtifact> importWebCookie(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        if (!(ucoObject instanceof Trace)) {
+            return Optional.empty();
+        }
 
-        Trace cookieDomainNode = new BlankTraceNode()
-                .addBundle(new DomainName()
-                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DOMAIN)));
+        Trace trace = (Trace) ucoObject;
+        ChildMapping childMap = getChildren(trace);
+        
+        Optional<URL> url = childMap.getChild(URL.class);
+        Optional<ContentData> contentData = childMap.getChild(ContentData.class);
+        Optional<BrowserCookie> browserCookie = childMap.getChild(BrowserCookie.class);
+        
+        Optional<DomainName> domainName = browserCookie
+                .flatMap(b -> Optional.ofNullable(b.getCookieDomain()))
+                .flatMap(id -> getByUcoId(mapping, id, Trace.class))
+                .flatMap(t -> getChild(t, DomainName.class));
 
-        Trace applicationNode = new BlankTraceNode()
-                .addBundle(new Application()
-                        .setApplicationIdentifier(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PROG_NAME)));
+        Optional<Application> application = browserCookie
+                .flatMap(b -> Optional.ofNullable(b.getApplication()))
+                .flatMap(id -> getByUcoId(mapping, id, Trace.class))
+                .flatMap(t -> getChild(t, Application.class));
 
-        BrowserCookie cookie = new BrowserCookie()
-                .setCookieName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_NAME))
-                .setCookieDomain(cookieDomainNode)
-                .setApplication(applicationNode)
-                .setAccessedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_START))
-                .setExpirationTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_END));
-        cookie.setCreatedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_CREATED));
-
-        export.addBundle(cookie);
-
-        addToOutput(export, output);
-        addToOutput(cookieDomainNode, output);
-        addToOutput(applicationNode, output);
+        if (!url.isPresent() || !contentData.isPresent() || !browserCookie.isPresent() || !domainName.isPresent() || !application.isPresent()) {
+            return Optional.empty();
+        }
+        
+        Optional<BlackboardAttribute> urlAttr = url.flatMap(u -> getAttr(TSK_URL, u.getFullValue()));
+        Optional<BlackboardAttribute> valueAttr = contentData.flatMap(c -> getAttr(TSK_VALUE, c.getDataPayload()));
+        Optional<BlackboardAttribute> nameAttr = browserCookie.flatMap(c -> getAttr(TSK_PROG_NAME, c.getCookieName()));
+        
+        if (!urlAttr.isPresent() || !valueAttr.isPresent() || !nameAttr.isPresent()) {
+            return Optional.empty();
+        }
+        
+        Optional<BlackboardAttribute> progNameAttr = application.flatMap(a -> getAttr(TSK_PROG_NAME, a.getApplicationIdentifier()));
+        Optional<BlackboardAttribute> domainAttr = domainName.flatMap(d -> getAttr(TSK_DOMAIN, d.getValue()));
+        Optional<BlackboardAttribute> timeStartAttr = browserCookie.flatMap(c -> getTimeStampAttr(TSK_DATETIME_START, c.getAccessedTime()));
+        Optional<BlackboardAttribute> timeEndAttr = browserCookie.flatMap(c -> getTimeStampAttr(TSK_DATETIME_END, c.getExpirationTime()));
+        Optional<BlackboardAttribute> timeCreatedAttr = browserCookie.flatMap(c -> getTimeStampAttr(TSK_DATETIME_CREATED, c.getCreatedTime()));
+        
+        return newArtifact(content, TSK_WEB_COOKIE, getFiltered(urlAttr, valueAttr, nameAttr, progNameAttr, domainAttr, timeStartAttr, timeEndAttr, timeCreatedAttr));
     }
 
-    private void assembleWebBookmark(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Trace applicationNode = new BlankTraceNode()
-                .addBundle(new Application()
-                        .setApplicationIdentifier(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PROG_NAME)));
+    private Optional<BlackboardArtifact> importWebBookmark(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        if (!(ucoObject instanceof Trace)) {
+            return Optional.empty();
+        }
 
-        BrowserBookmark bookmark = new BrowserBookmark()
-                .setUrlTargeted(getValueIfPresent(artifact, StandardAttributeTypes.TSK_URL))
-                .setApplication(applicationNode);
-        bookmark.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_NAME));
-        bookmark.setCreatedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_CREATED));
-
-        Trace export = new Trace(uuid)
-                .addBundle(bookmark)
-                .addBundle(new DomainName()
-                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DOMAIN)));
-
-        addToOutput(export, output);
-        addToOutput(applicationNode, output);
+        Trace trace = (Trace) ucoObject;
+        ChildMapping childMap = getChildren(trace);
+        
+        Optional<BrowserBookmark> bookmark = childMap.getChild(BrowserBookmark.class);
+        Optional<DomainName> domain = childMap.getChild(DomainName.class);
+        Optional<Application> application = bookmark
+                .flatMap(b -> Optional.ofNullable(b.getApplication()))
+                .flatMap(id -> getByUcoId(mapping, id, Trace.class))
+                .flatMap(t -> getChild(t, Application.class));
+        
+        if (!bookmark.isPresent() || !domain.isPresent() || !application.isPresent()) {
+            return Optional.empty();
+        }
+        
+        Optional<BlackboardAttribute> urlAttr = bookmark.flatMap(b -> getAttr(TSK_URL, b.getUrlTargeted()));
+        
+        if (!urlAttr.isPresent()) {
+            return Optional.empty();
+        }
+        
+        Optional<BlackboardAttribute> nameAttr = bookmark.flatMap(b -> getAttr(TSK_NAME, b.getName()));
+        Optional<BlackboardAttribute> dateTimeAttr = bookmark.flatMap(b -> getTimeStampAttr(TSK_DATETIME_CREATED, b.getCreatedTime()));
+        
+        Optional<BlackboardAttribute> domainAttr = domain.flatMap(d -> getAttr(TSK_DOMAIN, d.getValue()));
+        Optional<BlackboardAttribute> appAttr = application.flatMap(a -> getAttr(TSK_PROG_NAME, a.getApplicationIdentifier()));
+        
+        return newArtifact(content, TSK_WEB_BOOKMARK, getFiltered(nameAttr, dateTimeAttr, domainAttr, appAttr));
     }
 
-    private void assembleGenInfo(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Hash hash = new Hash(uuid, getValueIfPresent(artifact, StandardAttributeTypes.TSK_HASH_PHOTODNA));
-        addToOutput(hash, output);
+    private Optional<BlackboardArtifact> importGenInfo(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        Optional<Hash> hash = getAs(ucoObject, Hash.class);
+
+        if (!hash.isPresent()) {
+            return Optional.empty();
+        }
+        
+        Optional<BlackboardAttribute> photoDna = hash.flatMap(h -> getAttr(TSK_HASH_PHOTODNA, h.getId()));
+        
+        return newArtifact(content, TSK_GEN_INFO, getFiltered(photoDna));
     }
 
-    private void assembleWebHistory(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Trace userNameNode = new BlankTraceNode();
+    private Optional<BlackboardArtifact> importWebHistory(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        if (!(ucoObject instanceof Trace)) {
+            return Optional.empty();
+        }
 
-        IdentityFacet identityFacet = new IdentityFacet();
-        identityFacet.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_USER_NAME));
-        userNameNode.addBundle(identityFacet);
-
-        Trace export = new Trace(uuid)
-                .addBundle(new URL()
-                        .setUserName(userNameNode)
-                        .setFullValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_URL)))
-                .addBundle(new DomainName()
-                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DOMAIN)))
-                .addBundle(new Application()
-                        .setApplicationIdentifier(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PROG_NAME)));
-
-        addToOutput(export, output);
-        addToOutput(userNameNode, output);
+        Trace trace = (Trace) ucoObject;
+        ChildMapping childMap = getChildren(trace);
+        
+        Optional<URL> url = childMap.getChild(URL.class);
+        Optional<DomainName> domain = childMap.getChild(DomainName.class);
+        Optional<Application> application = childMap.getChild(Application.class);
+        Optional<IdentityFacet> identityFacet = url
+                .flatMap(u -> Optional.ofNullable(u.getUserName()))
+                .flatMap(id -> getByUcoId(mapping, id, Trace.class))
+                .flatMap(t -> getChild(t, IdentityFacet.class));
+        
+        if (!url.isPresent() || !domain.isPresent() || !application.isPresent() || !identityFacet.isPresent()) {
+            return Optional.empty();
+        }
+        
+        Optional<BlackboardAttribute> urlAttr = url.flatMap(u -> getAttr(TSK_URL, u.getFullValue()));
+        
+        if (!urlAttr.isPresent()) {
+            return Optional.empty();
+        }
+        
+        Optional<BlackboardAttribute> userName = identityFacet.flatMap(i -> getAttr(TSK_USER_NAME. i.getName()));
+        Optional<BlackboardAttribute> domainAttr = domain.flatMap(d -> getAttr(TSK_DOMAIN, d.getValue()));
+        Optional<BlackboardAttribute> appAttr = application.flatMap(a -> getAttr(TSK_PROG_NAME, a.getApplicationIdentifier()));
+        
+        return newArtifact(content, TSK_WEB_HISTORY, getFiltered(userName, urlAttr, domainAttr, appAttr));
     }
 
-    private void assembleWebDownload(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Trace export = new Trace(uuid)
-                .addBundle(new URL()
-                        .setFullValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_URL)))
-                .addBundle(new DomainName()
-                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DOMAIN)))
-                .addBundle(new File()
-                        .setFilePath(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PATH)))
-                .addBundle(new Application()
-                        .setApplicationIdentifier(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PROG_NAME)));
-        addToOutput(export, output);
+    private Optional<BlackboardArtifact> importWebDownload(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        if (!(ucoObject instanceof Trace)) {
+            return Optional.empty();
+        }
+
+        Trace trace = (Trace) ucoObject;
+        ChildMapping childMap = getChildren(trace);
+        
+        Optional<URL> url = childMap.getChild(URL.class);
+        Optional<DomainName> domain = childMap.getChild(DomainName.class);
+        Optional<File> file = childMap.getChild(File.class);
+        Optional<Application> application = childMap.getChild(Application.class);
+        
+        if (!url.isPresent() || !domain.isPresent() || !file.isPresent() || !application.isPresent()) {
+            return Optional.empty();
+        }
+        
+        Optional<BlackboardAttribute> urlAttr = url.flatMap(u -> getAttr(TSK_URL, u.getFullValue()));
+        
+        if (!urlAttr.isPresent()) {
+            return Optional.empty();
+        }
+        
+        Optional<BlackboardAttribute> domainAttr = domain.flatMap(d -> getAttr(TSK_DOMAIN, d.getValue()));
+        Optional<BlackboardAttribute> pathAttr = file.flatMap(f -> getAttr(TSK_PATH, f.getFilePath()));
+        Optional<BlackboardAttribute> appAttr = application.flatMap(a -> getAttr(TSK_PROG_NAME, a.getApplicationIdentifier()));
+        
+        return newArtifact(content, TSK_WEB_DOWNLOAD, getFiltered(urlAttr, domainAttr, pathAttr, appAttr));
     }
 
-    private void assembleDeviceAttached(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Trace export = new Trace(uuid)
-                .addBundle(new Device()
-                        .setManufacturer(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DEVICE_MAKE))
-                        .setModel(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DEVICE_MODEL))
-                        .setId(getValueIfPresent(artifact, StandardAttributeTypes.TSK_DEVICE_ID)))
-                .addBundle(new MACAddress()
-                        .setValue(getValueIfPresent(artifact, StandardAttributeTypes.TSK_MAC_ADDRESS)));
+    private Optional<BlackboardArtifact> importDeviceAttached(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        if (!(ucoObject instanceof Trace)) {
+            return Optional.empty();
+        }
 
-        export.setCreatedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME));
-        addToOutput(export, output);
+        Trace trace = (Trace) ucoObject;
+        ChildMapping childMap = getChildren(trace);
+        
+        Optional<Device> device = childMap.getChild(Device.class);
+        Optional<MACAddress> macAddress = childMap.getChild(MACAddress.class);
+
+        if (!device.isPresent() || !macAddress.isPresent()) {
+            return Optional.empty();
+        }
+
+        Optional<BlackboardAttribute> deviceId = device.flatMap((dev) -> getAttr(TSK_DEVICE_MODEL, dev.getModel()));
+        
+        if (!deviceId.isPresent()) {
+            return Optional.empty();
+        }
+        
+        Optional<BlackboardAttribute> deviceMake = device.flatMap((dev) -> getAttr(TSK_DEVICE_MAKE, dev.getManufacturer()));
+        Optional<BlackboardAttribute> deviceModel = device.flatMap((dev) -> getAttr(TSK_DEVICE_MODEL, dev.getModel()));
+        Optional<BlackboardAttribute> macAddressAttr = macAddress.flatMap((m) -> getAttr(TSK_MAC_ADDRESS, m.getValue()));
+        Optional<BlackboardAttribute> dateTime = getTimeStampAttr(TSK_DATETIME, trace.getCreatedTime());
+        
+        return newArtifact(content, TSK_DEVICE_ATTACHED, getFiltered(deviceId, deviceMake, deviceModel, macAddressAttr, dateTime));
+        
     }
 
-    private void assembleHashsetHit(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Assertion export = new Assertion(uuid);
-        export.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_SET_NAME));
-        export.setStatement(getValueIfPresent(artifact, StandardAttributeTypes.TSK_COMMENT));
-
-        addToOutput(export, output);
+    private Optional<BlackboardArtifact> importHashsetHit(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        // only distinguished by assertion requiring a name
+        
+        Optional<Assertion> assertion = getAs(ucoObject, Assertion.class);
+        Optional<BlackboardAttribute> setNameAttr = assertion.flatMap(a -> getAttr(TSK_SET_NAME, a.getName()));
+        
+        if (!setNameAttr.isPresent()) {
+            return Optional.empty();
+        }
+        
+        Optional<BlackboardAttribute> commentAttr = assertion.flatMap(a -> getAttr(TSK_COMMENT, a.getStatement()));
+        
+        return newArtifact(content, TSK_HASHSET_HIT, getFiltered(setNameAttr, commentAttr));
     }
 
-    private void assembleInstalledProg(String uuid, BlackboardArtifact artifact, List<JsonElement> output) throws TskCoreException {
-        Trace export = new Trace(uuid)
-                .addBundle(new File()
-                        .setFilePath(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PATH_SOURCE)));
-        Software software = new Software();
-        software.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PROG_NAME));
-        export.addBundle(software);
-
-        File file = new File()
-                .setFilePath(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PATH));
-        file.setModifiedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME));
-
-        file.setCreatedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_CREATED));
-        export.addBundle(file);
-
-        addToOutput(export, output);
+    
+    private Optional<BlackboardArtifact> importInstalledProg(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
+        if (!(ucoObject instanceof Trace)) {
+            return Optional.empty();
+        }
+        
+        Trace trace = (Trace) ucoObject;
+        ChildMapping childMap = getChildren(trace);
+        
+        List<File> files = childMap.getChildren(File.class);
+        Optional<Software> softwareOpt = childMap.getChild(Software.class);
+        
+        if (files.size() < 2 || !softwareOpt.isPresent()) {
+            return Optional.empty();
+        }
+        
+        Optional<BlackboardAttribute> progName = softwareOpt.flatMap(s -> getAttr(TSK_PROG_NAME, s.getName()));
+        
+        if (!progName.isPresent()) {
+            return Optional.empty();
+        }
+        
+        Optional<BlackboardAttribute> pathSource = getAttr(TSK_PATH_SOURCE, files.get(0).getFilePath());
+        
+        Optional<BlackboardAttribute> path = getAttr(TSK_PATH, files.get(1).getFilePath());
+        Optional<BlackboardAttribute> dateTime = getTimeStampAttr(TSK_DATETIME, files.get(1).getModifiedTime());
+        Optional<BlackboardAttribute> createdDateTime = getTimeStampAttr(TSK_DATETIME_CREATED, files.get(1).getCreatedTime());
+        
+        return newArtifact(content, TSK_INSTALLED_PROG, getFiltered(pathSource, progName, path, dateTime, createdDateTime));
     }
 
+    
     private Optional<BlackboardArtifact> importRecentObject(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
-        Trace export = new Trace(uuid)
-                .addBundle(new Application()
-                        .setApplicationIdentifier(getValueIfPresent(artifact, StandardAttributeTypes.TSK_PROG_NAME)));
+        // doesn't have a TSK_PATH 
+        
+        if (!(ucoObject instanceof Trace)) {
+            return Optional.empty();
+        }
+        
+        Trace trace = (Trace) ucoObject;
+        ChildMapping childMap = getChildren(trace);
+        
+        Optional<Application> applicationOpt = childMap.getChild(Application.class);
+        Optional<WindowsRegistryValue> winRegOpt = childMap.getChild(WindowsRegistryValue.class);
+        Optional<File> fileOpt = childMap.getChild(File.class);
+        
+        Optional<Assertion> assertOpt = getSourcesFromTarget(mapping, trace.getId(), Assertion.class).stream()
+                .filter(a -> a.getStatement() != null)
+                .findFirst();
+        
+        if (!applicationOpt.isPresent() || !winRegOpt.isPresent() || !fileOpt.isPresent() || !assertOpt.isPresent()) {
+            return Optional.empty();
+        }
 
-        WindowsRegistryValue registryValue = new WindowsRegistryValue()
-                .setData(getValueIfPresent(artifact, StandardAttributeTypes.TSK_VALUE));
-        registryValue.setName(getValueIfPresent(artifact, StandardAttributeTypes.TSK_NAME));
-
-        export.addBundle(registryValue);
-
-        File file = new File()
-                .setAccessedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME_ACCESSED));
-        file.setCreatedTime(getLongIfPresent(artifact, StandardAttributeTypes.TSK_DATETIME));
-
-        export.addBundle(file);
-
-        addToOutput(export, output);
-
-        Assertion assertion = new BlankAssertionNode()
-                .setStatement(getValueIfPresent(artifact, StandardAttributeTypes.TSK_COMMENT));
-        addToOutput(assertion, output);
-        addToOutput(new BlankRelationshipNode()
-                .setSource(assertion.getId())
-                .setTarget(uuid), output);
+        Optional<BlackboardAttribute> progName = applicationOpt.flatMap(a -> getAttr(TSK_PROG_NAME, a.getApplicationIdentifier()));
+        
+        Optional<BlackboardAttribute> value = winRegOpt.flatMap(reg -> getAttr(TSK_VALUE, reg.getData()));
+        Optional<BlackboardAttribute> name = winRegOpt.flatMap(reg -> getAttr(TSK_NAME, reg.getName()));
+        
+        Optional<BlackboardAttribute> accessedDate = fileOpt.flatMap(f -> getTimeStampAttr(TSK_DATETIME_ACCESSED, f.getAccessedTime()));
+        Optional<BlackboardAttribute> date = fileOpt.flatMap(f -> getTimeStampAttr(TSK_DATETIME, f.getCreatedTime()));
+        
+        Optional<BlackboardAttribute> comment = assertOpt.flatMap(a -> getAttr(TSK_COMMENT, a.getStatement()));
+        
+        return newArtifact(content, TSK_RECENT_OBJECT, getFiltered(progName, value, name, accessedDate, date, comment));
     }
 
     private Optional<BlackboardArtifact> importInterestingFileHit(IdMapping mapping, Content content, UcoObject ucoObject) throws TskCoreException {
