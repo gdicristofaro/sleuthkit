@@ -72,6 +72,8 @@ public final class Blackboard {
 		postArtifacts(Collections.singleton(artifact), moduleName);
 	}
 
+	private static Logger logger = Logger.getLogger(Blackboard.class.getName());
+	
 	/**
 	 * Posts a Collection of artifacts. The artifacts should be complete (all
 	 * attributes have been added) before being posted. Posting the artifacts
@@ -94,8 +96,11 @@ public final class Blackboard {
 		 */
 		for (BlackboardArtifact artifact : artifacts) {
 			try {
+				logger.log(Level.INFO, "Beginning addArtifactEvents with artifact: " + artifact);
 				caseDb.getTimelineManager().addArtifactEvents(artifact);
-			} catch (TskCoreException ex) {
+				logger.log(Level.INFO, "Finished addArtifactEvents");
+			} catch (Throwable ex) {
+				logger.log(Level.SEVERE, "An exception occurred in addArtifactEvents", ex);
 				throw new BlackboardException("Failed to add events for artifact: " + artifact, ex);
 			}
 		}
