@@ -608,6 +608,32 @@ public final class CaseDbAccessManager {
 	}
 	
 	/**
+	 * Runs the specified query and then calls the specified callback with the result.
+	 * 
+	 * @param sql SQL string.
+	 * @param queryCallback Callback object to process the result.
+	 * 
+	 * @throws TskCoreException 
+	 */
+	@Beta
+	public void query(final String sql, final CaseDbAccessQueryCallback queryCallback) throws TskCoreException {
+		if (queryCallback == null) {
+			throw new TskCoreException("Callback is null");
+		}
+
+		tskDB.acquireSingleUserCaseReadLock();
+		try (CaseDbConnection connection = tskDB.getConnection();
+				Statement statement = connection.createStatement();
+				ResultSet resultSet = statement.executeQuery(sql)) {
+			queryCallback.process(resultSet);
+		} catch (SQLException ex) {
+			throw new TskCoreException("Error running query.", ex);
+		} finally {
+			tskDB.releaseSingleUserCaseReadLock();
+		}
+	}
+	
+	/**
 	 * Creates a prepared statement object for the purposes of running a select
 	 * statement.
 	 *
