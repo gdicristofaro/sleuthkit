@@ -18,14 +18,19 @@
  */
 package org.sleuthkit.datamodel;
 
+import com.google.common.annotations.Beta;
+import com.google.common.collect.ImmutableSet;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.sleuthkit.datamodel.SleuthkitCase.CaseDbConnection;
 import org.sleuthkit.datamodel.SleuthkitCase.CaseDbTransaction;
@@ -430,6 +435,137 @@ public class TaggingManager {
 			throw new TskCoreException("Error getting content tag FileKnown status for content with id: " + objectId);
 		}
 	}
+	
+	/**
+	 * Adds a content tag of tagName for every content object with one of the
+	 * contentObjIds that does not currently have a content tag of the specified
+	 * tagName or is in the tag set of the specified tagName.
+	 *
+	 * @param contentObjIds The content object ids for the new content tags.
+	 * @param dataSourceId  The data source object id of all of the content
+	 *                      object ids.
+	 * @param tagName       The tag name to be inserted.
+	 * @param comment       The comment to be inserted with the tag.
+	 *
+	 * @return The object specifying the parameters of the requested change.
+	 *
+	 * @throws TskCoreException
+	 */
+	@Beta
+	public BulkContentTagChange addContentTags(Set<Long> contentObjIds, long dataSourceId, TagName tagName, String comment) throws TskCoreException {
+		if (contentObjIds == null || contentObjIds.isEmpty()) {
+			throw new TskCoreException("Expected non-empty set of content tags");
+		} else if (tagName == null) {
+			throw new TskCoreException("Expected non-null tagName");
+		} else if (comment == null) {
+			throw new TskCoreException("Expected non-null comment");
+		}
+		
+		
+		Examiner currentExaminer = skCase.getCurrentExaminer();
+		long currentExaminerId = currentExaminer.getId();
+		long tagNameId = tagName.getId();
+		long tagSetId = tagName.getTagSetId();
+		
+		skCase.acquireSingleUserCaseWriteLock();
+		CaseDbTransaction trans = skCase.beginTransaction();
+		
+		try {
+			// limit object ids to only what we need
+			String tagSetClause = tagSetId > 0 ? "OR t.tag_set_id = ?" : "";
+			String queryObjIdQuestionMarks = contentObjIds.stream().map(v -> "?").collect(Collectors.joining(","));
+			String toBeInsertedQuery = "SELECT\n"
+					+ "    f.obj_id\n"
+					+ "FROM tsk_files f\n"
+					+ "WHERE f.obj_id IN (" + queryObjIdQuestionMarks + ")\n"
+					+ "AND f.data_source_obj_id = ?\n"
+					+ "AND f.obj_id NOT IN (\n"
+					+ "    SELECT c.obj_id\n"
+					+ "    FROM content_tags c\n"
+					+ "    LEFT JOIN tag_names t ON c.tag_name_id = t.tag_name_id\n"
+					+ "    WHERE c.tag_name_id = ? " + tagSetClause + "\n"
+					+ ")";
+
+			Set<Long> contentIdsToUpdate = new HashSet<>();
+			try (final CaseDbConnection con = trans.getConnection();
+					final PreparedStatement queryStatement = con.prepareStatement(toBeInsertedQuery, Statement.NO_GENERATED_KEYS)) {
+
+				int paramIdx = 0;
+
+				for (Long objId : contentObjIds) {
+					queryStatement.setLong(++paramIdx, objId);
+				}
+
+				queryStatement.setLong(++paramIdx, dataSourceId);
+				if (tagSetId > 0) {
+					queryStatement.setLong(++paramIdx, tagSetId);
+				}
+
+				try (ResultSet objIdsToInsert = queryStatement.executeQuery()) {
+					while (objIdsToInsert.next()) {
+						contentIdsToUpdate.add(objIdsToInsert.getLong("obj_id"));
+					}
+				}
+			}
+			
+			// no need to continue if no object ids to update
+			if (contentIdsToUpdate.isEmpty()) {
+				trans = null;
+				return new BulkContentTagChange(tagName, comment, Collections.emptySet());
+			}
+			
+			// insert a content tag for any relevant file
+			String insertObjIdQuestionMarks = contentIdsToUpdate.stream().map(v -> "?").collect(Collectors.joining(","));
+			String insertStatementStr = "INSERT INTO content_tags(obj_id, tag_name_id, comment, begin_byte_offset, end_byte_offset, examiner)\n"
+				+ "SELECT\n"
+				+ "    f.obj_id,\n"
+				+ "    ? AS tag_name_id,\n"
+				+ "    ? AS comment,\n"
+				+ "    -1 AS begin_byte_offset,\n"
+				+ "    -1 AS end_byte_offset,\n"
+				+ "    ? AS examiner\n"
+				+ "FROM tsk_files f\n"
+				+ "WHERE f.obj_id IN (" + insertObjIdQuestionMarks + ")";
+				
+			try (final CaseDbConnection con = trans.getConnection();
+					final PreparedStatement insertStatement = con.prepareStatement(insertStatementStr, Statement.NO_GENERATED_KEYS)) {
+
+				int curIdx = 0;
+				insertStatement.setLong(++curIdx, tagNameId);
+				insertStatement.setString(++curIdx, comment);
+				insertStatement.setLong(++curIdx, currentExaminerId);
+
+				for (Long objId : contentIdsToUpdate) {
+					insertStatement.setLong(++curIdx, objId);
+				}
+
+				insertStatement.execute();
+			}
+			
+			// update aggregate score accordingly
+			for (Long objId : contentIdsToUpdate) {
+				skCase.getScoringManager().updateAggregateScoreAfterAddition(
+					objId, dataSourceId, getTagScore(tagName.getKnownStatus()), trans);
+			}
+			
+			trans.commit();
+			trans = null;
+
+			BulkContentTagChange bulkChange = new BulkContentTagChange(tagName, comment, contentIdsToUpdate);
+			skCase.fireTSKEvent(bulkChange);
+			return bulkChange;
+
+		} catch (SQLException ex) {
+			throw new TskCoreException("Failed to insert matching content tags", ex); // NON-NLS
+		} finally {
+			if (trans != null) {
+				trans.rollback();
+				trans = null;
+			}
+			
+			skCase.releaseSingleUserCaseWriteLock();
+		}
+	}
 
 	/**
 	 * Inserts a row into the content_tags table in the case database.
@@ -819,6 +955,50 @@ public class TaggingManager {
 		 */
 		public List<ContentTag> getRemovedTags() {
 			return Collections.unmodifiableList(removedTagList);
+		}
+	}
+	
+	/**
+	 * Represents an addition of content tags for a particular tag name for
+	 * multiple object ids.
+	 */
+	public static class BulkContentTagChange {
+
+		private final TagName tagName;
+		private final String comment;
+		private final Set<Long> contentIds;
+
+		/**
+		 * Main constructor.
+		 * @param tagName The tag name.
+		 * @param comment The comment inserted.
+		 * @param contentIds The set of object ids to be added.
+		 */
+		BulkContentTagChange(TagName tagName, String comment, Set<Long> contentIds) {
+			this.tagName = tagName;
+			this.comment = comment;
+			this.contentIds = contentIds;
+		}
+
+		/**
+		 * @return The tag name inserted.
+		 */
+		public TagName getTagName() {
+			return tagName;
+		}
+
+		/**
+		 * @return The comment inserted.
+		 */
+		public String getComment() {
+			return comment;
+		}
+
+		/**
+		 * @return The content ids for content tags inserted.
+		 */
+		public Set<Long> getContentIds() {
+			return Collections.unmodifiableSet(contentIds);
 		}
 	}
 }
