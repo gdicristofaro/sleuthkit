@@ -428,7 +428,7 @@ public final class CommunicationsManager {
 			);
 
 			stmt.clearParameters();
-			stmt.setInt(1, getAccountTypeId(accountType));
+			stmt.setInt(1, getAccountTypeId(caseDbConnection, accountType));
 			stmt.setString(2, normalizeAccountID(accountType, accountUniqueID));
 
 			try (ResultSet rs = stmt.executeQuery()) {
@@ -649,9 +649,9 @@ public final class CommunicationsManager {
 			}
 
 			try {
-				PreparedStatement insertStmt = trans.getConnection().getPreparedStatement(query, Statement.NO_GENERATED_KEYS);
+				PreparedStatement insertStmt = trans.getConnection().getPreparedStatement(query, Statement.RETURN_GENERATED_KEYS);
 				insertStmt.clearParameters();
-				insertStmt.setInt(1, getAccountTypeId(accountType));
+				insertStmt.setInt(1, getAccountTypeId(trans.getConnection(), accountType));
 				String accountUniqueIdentifier = normalizeAccountID(accountType, accountUniqueID);
 				insertStmt.setString(2, accountUniqueIdentifier);
 				if (insertStmt.executeUpdate() > 0) {
@@ -1431,15 +1431,13 @@ public final class CommunicationsManager {
 		}
 	}
 
-	private Map<Account.Type, Integer> getAccountTypesMap() throws TskCoreException {
+	private Map<Account.Type, Integer> getAccountTypesMap(CaseDbConnection dbConn) throws TskCoreException {
 
 		String query = "SELECT account_type_id, type_name, display_name FROM account_types";
 		Map<Account.Type, Integer> toRet = new HashMap<>();
 
-		db.acquireSingleUserCaseReadLock();
-		try (CaseDbConnection connection = db.getConnection();
-				Statement s = connection.createStatement();
-				ResultSet rs = connection.executeQuery(s, query);) {
+		try (Statement s = dbConn.createStatement();
+				ResultSet rs = dbConn.executeQuery(s, query);) {
 			Account.Type accountType;
 			while (rs.next()) {
 				int accountTypeId = rs.getInt("account_type_id");
@@ -1452,7 +1450,6 @@ public final class CommunicationsManager {
 		} catch (SQLException ex) {
 			throw new TskCoreException("Error getting account type id", ex);
 		} finally {
-			db.releaseSingleUserCaseReadLock();
 		}
 	}
 
@@ -1493,7 +1490,7 @@ public final class CommunicationsManager {
 					while (rs.next()) {
 						Account.Type accountType = null;
 						int accountTypeId = rs.getInt("account_type_id");
-						for (Map.Entry<Account.Type, Integer> entry : getAccountTypesMap().entrySet()) {
+						for (Map.Entry<Account.Type, Integer> entry : getAccountTypesMap(connection).entrySet()) {
 							if (entry.getValue() == accountTypeId) {
 								accountType = entry.getKey();
 								break;
@@ -1523,7 +1520,17 @@ public final class CommunicationsManager {
 	 */
 	int getAccountTypeId(Account.Type accountType) {
 		try {
-			Map<Account.Type, Integer> accountMap = getAccountTypesMap();
+			return getAccountTypeId(db.getConnection(), accountType);
+		} catch (TskCoreException ex) {
+			ex.printStackTrace();
+		}
+
+		return 0;
+	}
+
+	int getAccountTypeId(CaseDbConnection conn, Account.Type accountType) {
+		try {
+			Map<Account.Type, Integer> accountMap = getAccountTypesMap(conn);
 			if (accountMap.containsKey(accountType)) {
 				return accountMap.get(accountType);
 			}
