@@ -18,7 +18,6 @@
  */
 package org.sleuthkit.datamodel;
 
-import com.google.common.annotations.Beta;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -33,7 +32,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.sleuthkit.datamodel.Blackboard.BlackboardException;
@@ -42,8 +40,6 @@ import org.sleuthkit.datamodel.SleuthkitCase.CaseDbTransaction;
 import static org.sleuthkit.datamodel.SleuthkitCase.closeConnection;
 import static org.sleuthkit.datamodel.SleuthkitCase.closeResultSet;
 import static org.sleuthkit.datamodel.SleuthkitCase.closeStatement;
-import org.sleuthkit.datamodel.blackboardutils.attributes.BlackboardJsonAttrUtil;
-import org.sleuthkit.datamodel.blackboardutils.attributes.MessageAttachments;
 
 /**
  * Provides an API to create Accounts and communications/relationships between
@@ -54,11 +50,6 @@ public final class CommunicationsManager {
 	private static final Logger LOGGER = Logger.getLogger(CommunicationsManager.class.getName());
 	private static final BlackboardArtifact.Type ACCOUNT_TYPE = new BlackboardArtifact.Type(BlackboardArtifact.ARTIFACT_TYPE.TSK_ACCOUNT);
 	private final SleuthkitCase db;
-
-	private final Map<Account.Type, Integer> accountTypeToTypeIdMap
-			= new ConcurrentHashMap<>();
-	private final Map<String, Account.Type> typeNameToAccountTypeMap
-			= new ConcurrentHashMap<>();
 
 	// Artifact types that can represent a relationship between accounts. 
 	private static final Set<Integer> RELATIONSHIP_ARTIFACT_TYPE_IDS = new HashSet<Integer>(Arrays.asList(
@@ -113,8 +104,6 @@ public final class CommunicationsManager {
 						int typeID = rs2.getInt("account_type_id");
 
 						Account.Type accountType = new Account.Type(type.getTypeName(), type.getDisplayName());
-						this.accountTypeToTypeIdMap.put(accountType, typeID);
-						this.typeNameToAccountTypeMap.put(type.getTypeName(), accountType);
 					}
 				}
 			}
@@ -153,10 +142,7 @@ public final class CommunicationsManager {
 				resultSet = connection.executeQuery(statement, "SELECT * FROM account_types");
 				while (resultSet.next()) {
 					Account.Type accountType = new Account.Type(resultSet.getString("type_name"), resultSet.getString("display_name"));
-					this.accountTypeToTypeIdMap.put(accountType, resultSet.getInt("account_type_id"));
-					this.typeNameToAccountTypeMap.put(accountType.getTypeName(), accountType);
 				}
-				count = this.typeNameToAccountTypeMap.size();
 			}
 
 		} catch (SQLException ex) {
@@ -168,7 +154,7 @@ public final class CommunicationsManager {
 			db.releaseSingleUserCaseReadLock();
 		}
 
-		return count;
+		return 20;
 	}
 
 	/**
@@ -194,12 +180,6 @@ public final class CommunicationsManager {
 	 */
 	// NOTE: Full name given for Type for doxygen linking
 	public org.sleuthkit.datamodel.Account.Type addAccountType(String accountTypeName, String displayName) throws TskCoreException {
-		Account.Type accountType = new Account.Type(accountTypeName, displayName);
-		// check if already in map
-		if (this.accountTypeToTypeIdMap.containsKey(accountType)) {
-			return accountType;
-		}
-		
 		CaseDbTransaction transaction = this.db.beginTransaction();
 		try {
 			org.sleuthkit.datamodel.Account.Type retAccountType = addAccountType(accountTypeName, displayName, transaction);
@@ -228,51 +208,43 @@ public final class CommunicationsManager {
 	public org.sleuthkit.datamodel.Account.Type addAccountType(String accountTypeName, String displayName, CaseDbTransaction trans) throws TskCoreException {
 		Account.Type accountType = new Account.Type(accountTypeName, displayName);
 
-		// check if already in map
-		if (this.accountTypeToTypeIdMap.containsKey(accountType)) {
-			return accountType;
-		}
-
 		try {
 			PreparedStatement initialSelectStmt = trans.getConnection().getPreparedStatement(
-					"SELECT * FROM account_types WHERE type_name = ?", 
+					"SELECT * FROM account_types WHERE type_name = ?",
 					Statement.RETURN_GENERATED_KEYS
 			);
 			initialSelectStmt.clearParameters();
 			initialSelectStmt.setString(1, accountTypeName);
-			
+
 			// try to get cached account type
 			try (ResultSet initialSelectRs = initialSelectStmt.executeQuery()) {
 				if (initialSelectRs.next()) {
 					int typeID = initialSelectRs.getInt("account_type_id");
 					accountType = new Account.Type(initialSelectRs.getString("type_name"), initialSelectRs.getString("display_name"));
-					this.accountTypeToTypeIdMap.put(accountType, typeID);
 					return accountType;
 				}
 			}
 
 			// if not in database, insert
 			PreparedStatement insertStmt = trans.getConnection().getPreparedStatement(
-				"INSERT INTO account_types (type_name, display_name) VALUES (?, ?)",
-				Statement.RETURN_GENERATED_KEYS
+					"INSERT INTO account_types (type_name, display_name) VALUES (?, ?)",
+					Statement.RETURN_GENERATED_KEYS
 			);
 
 			insertStmt.clearParameters();
-			insertStmt.setString(1, accountTypeName);				
+			insertStmt.setString(1, accountTypeName);
 			insertStmt.setString(2, displayName);
-				
+
 			int affectedRows = insertStmt.executeUpdate();
 			if (affectedRows > 0) {
 				try (ResultSet insertRsKeys = insertStmt.getGeneratedKeys()) {
 					if (insertRsKeys.next()) {
 						int accountTypeId = insertRsKeys.getInt(1);
-						this.accountTypeToTypeIdMap.put(accountType, accountTypeId);
-						this.typeNameToAccountTypeMap.put(accountTypeName, accountType);
 						return accountType;
 					}
 				}
 			}
-			
+
 			throw new SQLException(MessageFormat.format("Account with type name: {0} and display name: {1} could not be created", accountTypeName, displayName));
 		} catch (SQLException ex) {
 			throw new TskCoreException("Error adding account type", ex);
@@ -451,21 +423,21 @@ public final class CommunicationsManager {
 	public Account getAccount(org.sleuthkit.datamodel.Account.Type accountType, String accountUniqueID, CaseDbConnection caseDbConnection) throws TskCoreException, InvalidAccountIDException {
 		try {
 			PreparedStatement stmt = caseDbConnection.getPreparedStatement(
-					"SELECT * FROM accounts WHERE account_type_id = ? AND account_unique_identifier = ?", 
+					"SELECT * FROM accounts WHERE account_type_id = ? AND account_unique_identifier = ?",
 					Statement.NO_GENERATED_KEYS
 			);
-		
+
 			stmt.clearParameters();
 			stmt.setInt(1, getAccountTypeId(accountType));
 			stmt.setString(2, normalizeAccountID(accountType, accountUniqueID));
-			
+
 			try (ResultSet rs = stmt.executeQuery()) {
 				if (rs.next()) {
 					return new Account(rs.getInt("account_id"), accountType,
 							rs.getString("account_unique_identifier"));
 				} else {
 					return null;
-				}				
+				}
 			}
 		} catch (SQLException ex) {
 			throw new TskCoreException("Error adding an account", ex);
@@ -483,9 +455,9 @@ public final class CommunicationsManager {
 	 *
 	 * @throws TskCoreException
 	 */
-	private DataArtifact newDataArtifact(Content content, BlackboardArtifact.Type artType, 
+	private DataArtifact newDataArtifact(Content content, BlackboardArtifact.Type artType,
 			Collection<BlackboardAttribute> attributes, CaseDbTransaction trans) throws TskCoreException {
-		
+
 		Long dataSourceObjId;
 		if (content instanceof AbstractFile) {
 			dataSourceObjId = ((AbstractFile) content).getDataSourceObjectId();
@@ -505,7 +477,6 @@ public final class CommunicationsManager {
 				trans);
 	}
 
-	
 	/**
 	 * Adds relationships between the sender and each of the recipient account
 	 * instances and between all recipient account instances. All account
@@ -687,14 +658,14 @@ public final class CommunicationsManager {
 					try (ResultSet rs = insertStmt.getGeneratedKeys()) {
 						if (rs.next()) {
 							return new Account(
-									rs.getInt(1), 
+									rs.getInt(1),
 									accountType,
 									accountUniqueIdentifier
 							);
 						}
 					}
-				} 
-				
+				}
+
 				return null;
 			} catch (SQLException ex) {
 				throw new TskCoreException("Error adding an account", ex);
@@ -790,7 +761,7 @@ public final class CommunicationsManager {
 		try {
 			PreparedStatement pStatement = transaction.getConnection().getPreparedStatement(queryStr, Statement.NO_GENERATED_KEYS);
 			pStatement.clearParameters();
-			
+
 			int paramIdx = 0;
 			pStatement.setInt(++paramIdx, BlackboardAttribute.ATTRIBUTE_TYPE.TSK_ID.getTypeID());
 			pStatement.setString(++paramIdx, accountUniqueID);
@@ -829,10 +800,6 @@ public final class CommunicationsManager {
 	 */
 	// NOTE: Full name given for Type for doxygen linking
 	public org.sleuthkit.datamodel.Account.Type getAccountType(String accountTypeName) throws TskCoreException {
-		if (this.typeNameToAccountTypeMap.containsKey(accountTypeName)) {
-			return this.typeNameToAccountTypeMap.get(accountTypeName);
-		}
-
 		db.acquireSingleUserCaseReadLock();
 		try (CaseDbConnection connection = db.getConnection();
 				Statement s = connection.createStatement();
@@ -840,8 +807,6 @@ public final class CommunicationsManager {
 			Account.Type accountType = null;
 			if (rs.next()) {
 				accountType = new Account.Type(accountTypeName, rs.getString("display_name"));
-				this.accountTypeToTypeIdMap.put(accountType, rs.getInt("account_type_id"));
-				this.typeNameToAccountTypeMap.put(accountTypeName, accountType);
 			}
 			return accountType;
 		} catch (SQLException ex) {
@@ -910,6 +875,7 @@ public final class CommunicationsManager {
 				+ " accounts.account_unique_identifier AS account_unique_identifier,"
 				//account type info
 				+ " account_types.type_name AS type_name,"
+				+ " account_types.display_name AS type_display,"
 				//Account device instance info
 				+ " data_source_info.device_id AS device_id"
 				+ " FROM ( " + uniqueAccountQuery + " ) AS account_device_instances"
@@ -941,9 +907,10 @@ public final class CommunicationsManager {
 				long account_id = rs.getLong("account_id");
 				String deviceID = rs.getString("device_id");
 				final String type_name = rs.getString("type_name");
+				final String type_display = rs.getString("type_display");
 				final String account_unique_identifier = rs.getString("account_unique_identifier");
 
-				Account.Type accountType = typeNameToAccountTypeMap.get(type_name);
+				Account.Type accountType = new Account.Type(type_name, type_display);
 				Account account = new Account(account_id, accountType, account_unique_identifier);
 				accountDeviceInstances.add(new AccountDeviceInstance(account, deviceID));
 			}
@@ -1170,7 +1137,7 @@ public final class CommunicationsManager {
 		for (Map.Entry<Long, Set<Long>> entry : accountIdToDatasourceObjIdMap.entrySet()) {
 			final Long accountID = entry.getKey();
 			String datasourceObjIdsCSV = CommManagerSqlStringUtils.buildCSVString(entry.getValue());
-			
+
 			adiSQLClauses.add(
 					"( "
 					+ (!datasourceObjIdsCSV.isEmpty() ? "( relationships.data_source_obj_id IN ( " + datasourceObjIdsCSV + " ) ) AND" : "")
@@ -1179,8 +1146,8 @@ public final class CommunicationsManager {
 			);
 		}
 		String adiSQLClause = CommManagerSqlStringUtils.joinAsStrings(adiSQLClauses, " OR ");
-		
-		if(adiSQLClause.isEmpty()) {
+
+		if (adiSQLClause.isEmpty()) {
 			LOGGER.log(Level.SEVERE, "There set of AccountDeviceInstances had no valid data source ids.");
 			return Collections.emptySet();
 		}
@@ -1196,7 +1163,7 @@ public final class CommunicationsManager {
 
 		// Basic join.
 		String limitQuery = " account_relationships AS relationships";
-		
+
 		// If the user set filters expand this to be a subquery that selects
 		// accounts based on the filter.
 		String limitStr = getMostRecentFilterLimitSQL(filter);
@@ -1293,6 +1260,7 @@ public final class CommunicationsManager {
 				+ " accounts.account_unique_identifier AS account_unique_identifier,"
 				//account type info
 				+ " account_types.type_name AS type_name,"
+				+ " account_types.display_name AS type_display,"
 				//Account device instance info
 				+ " data_source_info.device_id AS device_id"
 				+ " FROM ( " + combinedInnerQuery + " ) AS account_device_instances"
@@ -1324,9 +1292,10 @@ public final class CommunicationsManager {
 				long account_id = rs.getLong("account_id");
 				String deviceID = rs.getString("device_id");
 				final String type_name = rs.getString("type_name");
+				final String type_display = rs.getString("type_display");
 				final String account_unique_identifier = rs.getString("account_unique_identifier");
 
-				Account.Type accountType = typeNameToAccountTypeMap.get(type_name);
+				Account.Type accountType = new Account.Type(type_name, type_display);
 				Account account = new Account(account_id, accountType, account_unique_identifier);
 				accountDeviceInstances.add(new AccountDeviceInstance(account, deviceID));
 			}
@@ -1451,16 +1420,35 @@ public final class CommunicationsManager {
 			Account.Type accountType;
 			while (rs.next()) {
 				String accountTypeName = rs.getString("type_name");
-				accountType = this.typeNameToAccountTypeMap.get(accountTypeName);
-
-				if (accountType == null) {
-					accountType = new Account.Type(accountTypeName, rs.getString("display_name"));
-					this.accountTypeToTypeIdMap.put(accountType, rs.getInt("account_type_id"));
-				}
-
+				accountType = new Account.Type(accountTypeName, rs.getString("display_name"));
 				inUseAccounts.add(accountType);
 			}
 			return inUseAccounts;
+		} catch (SQLException ex) {
+			throw new TskCoreException("Error getting account type id", ex);
+		} finally {
+			db.releaseSingleUserCaseReadLock();
+		}
+	}
+
+	private Map<Account.Type, Integer> getAccountTypesMap() throws TskCoreException {
+
+		String query = "SELECT account_type_id, type_name, display_name FROM account_types";
+		Map<Account.Type, Integer> toRet = new HashMap<>();
+
+		db.acquireSingleUserCaseReadLock();
+		try (CaseDbConnection connection = db.getConnection();
+				Statement s = connection.createStatement();
+				ResultSet rs = connection.executeQuery(s, query);) {
+			Account.Type accountType;
+			while (rs.next()) {
+				int accountTypeId = rs.getInt("account_type_id");
+				String accountTypeName = rs.getString("type_name");
+				String accountDisplayName = rs.getString("display_name");
+				accountType = new Account.Type(accountTypeName, accountDisplayName);
+				toRet.put(accountType, accountTypeId);
+			}
+			return toRet;
 		} catch (SQLException ex) {
 			throw new TskCoreException("Error getting account type id", ex);
 		} finally {
@@ -1505,7 +1493,7 @@ public final class CommunicationsManager {
 					while (rs.next()) {
 						Account.Type accountType = null;
 						int accountTypeId = rs.getInt("account_type_id");
-						for (Map.Entry<Account.Type, Integer> entry : accountTypeToTypeIdMap.entrySet()) {
+						for (Map.Entry<Account.Type, Integer> entry : getAccountTypesMap().entrySet()) {
 							if (entry.getValue() == accountTypeId) {
 								accountType = entry.getKey();
 								break;
@@ -1534,8 +1522,13 @@ public final class CommunicationsManager {
 	 * @return account_type_id for the given account type. 0 if not known.
 	 */
 	int getAccountTypeId(Account.Type accountType) {
-		if (accountTypeToTypeIdMap.containsKey(accountType)) {
-			return accountTypeToTypeIdMap.get(accountType);
+		try {
+			Map<Account.Type, Integer> accountMap = getAccountTypesMap();
+			if (accountMap.containsKey(accountType)) {
+				return accountMap.get(accountType);
+			}
+		} catch (TskCoreException ex) {
+			ex.printStackTrace();
 		}
 
 		return 0;
