@@ -48,6 +48,7 @@ import static org.sleuthkit.datamodel.BlackboardAttribute.ATTRIBUTE_TYPE.TSK_TL_
 import static org.sleuthkit.datamodel.CollectionUtils.isNotEmpty;
 import static org.sleuthkit.datamodel.CommManagerSqlStringUtils.buildCSVString;
 import org.sleuthkit.datamodel.SleuthkitCase.CaseDbConnection;
+import org.sleuthkit.datamodel.SleuthkitCase.CaseDbTransaction;
 import static org.sleuthkit.datamodel.SleuthkitCase.escapeSingleQuotes;
 
 /**
@@ -568,6 +569,38 @@ public final class TimelineManager {
 				.forEach(caseDB::fireTSKEvent);
 
 		return events;
+	}
+	
+	// Test code
+	@Beta
+	public TimelineEvent addTimelineEvent(
+			TimelineEventType eventType, String shortDesc, String medDesc, String longDesc,
+			long dataSourceId, long contentId, Long artifactId, long time,
+			boolean hashHit, boolean tagged,
+			CaseDbTransaction trans
+	) throws TskCoreException {
+		caseDB.acquireSingleUserCaseWriteLock();
+		try {
+			Long descriptionID = addEventDescription(dataSourceId, contentId, artifactId,
+					longDesc, medDesc, shortDesc, hashHit, tagged, trans.getConnection());
+
+			if (descriptionID == null) {
+				descriptionID = getEventDescription(dataSourceId, contentId, artifactId, longDesc, trans.getConnection());
+			}
+			if (descriptionID != null) {
+				long eventID = addEventWithExistingDescription(time, eventType, descriptionID, trans.getConnection());
+				return new TimelineEvent(eventID, descriptionID, contentId, artifactId, time, eventType,
+						longDesc, medDesc, shortDesc, hashHit, tagged);
+			} else {
+				// GVDTODO
+				throw new TskCoreException(String.format("Failed to get event description"));
+			}
+		} catch (DuplicateException dupEx) {
+			logger.log(Level.SEVERE, "Attempt to make file event duplicate.", dupEx);
+			return null;
+		} finally {
+			caseDB.releaseSingleUserCaseWriteLock();
+		}
 	}
 
 	/**
