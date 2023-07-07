@@ -216,7 +216,7 @@ public interface TimelineEventType extends Comparable<TimelineEventType> {
 		@Override
 		public SortedSet< TimelineEventType> getChildren() {
 			return ImmutableSortedSet.of(FILE_MODIFIED, FILE_ACCESSED,
-					FILE_CREATED, FILE_CHANGED);
+					FILE_CREATED, FILE_CHANGED, FILE_FNAME_CREATED);
 		}
 	};
 
@@ -249,8 +249,9 @@ public interface TimelineEventType extends Comparable<TimelineEventType> {
 					PROGRAM_DELETED,
 					OS_INFO, WIFI_NETWORK, USER_DEVICE_EVENT_START, USER_DEVICE_EVENT_END,
 					SERVICE_ACCOUNT, SCREEN_SHOT, PROGRAM_NOTIFICATION,
-					BLUETOOTH_PAIRING_ACCESSED, BLUETOOTH_ADAPTER, CUSTOM_ARTIFACT_CATCH_ALL, STANDARD_ARTIFACT_CATCH_ALL, USER_CREATED);
-
+					BLUETOOTH_PAIRING_ACCESSED, BLUETOOTH_ADAPTER, CUSTOM_ARTIFACT_CATCH_ALL, STANDARD_ARTIFACT_CATCH_ALL, USER_CREATED,
+					TRIGGERED_TASK_CREATED, TRIGGERED_TASK_MODIFIED, LOGON_SUCCESS_START,
+					LOGON_FAIL, LOGON_SUCCESS_END, DATA_ACCESSED, NETWORK_CONNECTION_CREATED, NETWORK_PORT_OPENED);
 		}
 	};
 
@@ -838,6 +839,18 @@ public interface TimelineEventType extends Comparable<TimelineEventType> {
 			new BlackboardArtifact.Type(TSK_TL_EVENT),
 			new BlackboardAttribute.Type(TSK_DATETIME),
 			new BlackboardAttribute.Type(TSK_DESCRIPTION));
+	
+	
+	TimelineEventType TRIGGERED_TASK_CREATED = new TBD(61, getBundle().getString("MiscTypes.triggeredTaskCreated.name"), MISC_TYPES);
+	TimelineEventType TRIGGERED_TASK_MODIFIED = new TBD(62, getBundle().getString("MiscTypes.triggeredTaskModified.name"), MISC_TYPES);
+	TimelineEventType FILE_FNAME_CREATED = new TBD(63, getBundle().getString("FileSystemTypes.fileFnameCreated.name"), FILE_SYSTEM);
+	TimelineEventType LOGON_SUCCESS_START = new TBD(64, getBundle().getString("MiscTypes.logonSuccessStart.name"), MISC_TYPES);
+	TimelineEventType LOGON_FAIL = new TBD(65, getBundle().getString("MiscTypes.logonFail.name"), MISC_TYPES);
+	TimelineEventType LOGON_SUCCESS_END = new TBD(66, getBundle().getString("MiscTypes.logonSuccessEnd.name"), MISC_TYPES);
+	TimelineEventType DATA_ACCESSED = new TBD(67, getBundle().getString("MiscTypes.dataAccessed.name"), MISC_TYPES);
+	TimelineEventType NETWORK_CONNECTION_CREATED = new TBD(68, getBundle().getString("MiscTypes.networkConnectionCreated.name"), MISC_TYPES);
+	TimelineEventType NETWORK_PORT_OPENED = new TBD(69, getBundle().getString("MiscTypes.networkPortOpened.name"), MISC_TYPES);
+	
 
 	static SortedSet<? extends TimelineEventType> getCategoryTypes() {
 		return ROOT_EVENT_TYPE.getChildren();
