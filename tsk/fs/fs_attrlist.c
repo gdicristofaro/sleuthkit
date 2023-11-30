@@ -13,8 +13,14 @@
  * File that contains functions to process TSK_FS_ATTRLIST structures, which
  * hold a linked list of TSK_FS_ATTR attribute structures.
  */
-#include "../base/tsk_base.h"
 #include "tsk_fs_i.h"
+
+// _stricmp is a windows function; use strcasecmp instead
+#ifndef TSK_WIN32
+#define strcasecmp(string1, string2)	_stricmp(string1, string2)
+#endif
+
+
 /** \internal
  * Allocate a new data list structure
  *
