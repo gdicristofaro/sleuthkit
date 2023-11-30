@@ -14,12 +14,7 @@
  * hold a linked list of TSK_FS_ATTR attribute structures.
  */
 #include "tsk_fs_i.h"
-
-// _stricmp is a windows function; use strcasecmp instead
-#ifndef TSK_WIN32
-#define strcasecmp(string1, string2)	_stricmp(string1, string2)
-#endif
-
+#include "../base/tsk_base.h"
 
 /** \internal
  * Allocate a new data list structure
@@ -347,7 +342,7 @@ tsk_fs_attrlist_get_name_type(const TSK_FS_ATTRLIST * a_fs_attrlist,
                     fs_attr_ok = fs_attr_cur;
             }
 
-            else if ((name) && (fs_attr_cur->name) && fs_attr_cur->type == TSK_FS_ATTR_TYPE_NTFS_DATA && !_stricmp(fs_attr_cur->name, name)) {
+            else if ((name) && (fs_attr_cur->name) && fs_attr_cur->type == TSK_FS_ATTR_TYPE_NTFS_DATA && !strcasecmp(fs_attr_cur->name, name)) {
                 // NTFS data streams should do case insensitive compare
                 // make sure we return the lowest if multiple exist
                 if ((fs_attr_ok == NULL) || (fs_attr_ok->id > fs_attr_cur->id))
