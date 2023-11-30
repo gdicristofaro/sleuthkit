@@ -13,9 +13,8 @@
  * File that contains functions to process TSK_FS_ATTRLIST structures, which
  * hold a linked list of TSK_FS_ATTR attribute structures.
  */
-
+#include "../base/tsk_base.h"
 #include "tsk_fs_i.h"
-
 /** \internal
  * Allocate a new data list structure
  *
