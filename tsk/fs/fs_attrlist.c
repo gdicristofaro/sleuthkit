@@ -14,7 +14,6 @@
  * hold a linked list of TSK_FS_ATTR attribute structures.
  */
 #include "tsk_fs_i.h"
-#include "../base/tsk_base_i.h"
 
 /** \internal
  * Allocate a new data list structure
