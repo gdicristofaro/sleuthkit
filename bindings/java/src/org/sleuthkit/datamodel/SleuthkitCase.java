@@ -39,6 +39,7 @@ import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.URLEncoder;
+import java.nio.channels.FileLock;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.sql.Connection;
@@ -210,6 +211,7 @@ public class SleuthkitCase {
 			= CacheBuilder.newBuilder().maximumSize(200000).expireAfterAccess(5, TimeUnit.MINUTES).build();
 	// custom provider for file bytes (can be null)
 	private final ContentStreamProvider contentProvider;
+	private FileLock caseMutexLock = null;
 	
 	/*
 	 * First parameter is used to specify the SparseBitSet to use, as object IDs
@@ -363,10 +365,13 @@ public class SleuthkitCase {
 	 *                   SleuthKit layer.
 	 * @param dbType     The type of database we're dealing with
 	 * @param contentProvider Custom provider for file content (can be null).
-	 *
+	 * @param caseMutexLock   A file lock indicating that the case should not be
+	 *                        opened by another TSK instance. Can be null. May
+	 *                        not be respected by older versions of TSK.
+	 * 
 	 * @throws Exception
 	 */
-	private SleuthkitCase(String dbPath, SleuthkitJNI.CaseDbHandle caseHandle, DbType dbType, ContentStreamProvider contentProvider) throws Exception {
+	private SleuthkitCase(String dbPath, SleuthkitJNI.CaseDbHandle caseHandle, DbType dbType, ContentStreamProvider contentProvider, FileLock caseMutexLock) throws Exception {
 		Class.forName("org.sqlite.JDBC");
 		this.dbPath = dbPath;
 		this.dbType = dbType;
@@ -377,6 +382,7 @@ public class SleuthkitCase {
 		this.caseHandle = caseHandle;
 		this.caseHandleIdentifier = caseHandle.getCaseDbIdentifier();
 		this.contentProvider = contentProvider;
+		this.caseMutexLock = caseMutexLock;
 		init();
 		logSQLiteJDBCDriverInfo();
 	}
@@ -384,15 +390,21 @@ public class SleuthkitCase {
 	/**
 	 * Private constructor, clients must use newCase() or openCase() method to
 	 * create an instance of this class.
-	 * 
-	 * @param info		  CaseDbConnectionInfo object with database connection info
-	 * @param dbName      The name of the case database.
-	 * @param caseHandle  A handle to a case database object in the native code
-	 * @param caseDirPath The path to the root case directory.
+	 *
+	 * @param info		          CaseDbConnectionInfo object with database
+	 *                        connection info
+	 * @param dbName          The name of the case database.
+	 * @param caseHandle      A handle to a case database object in the native
+	 *                        code
+	 * @param caseDirPath     The path to the root case directory.
 	 * @param contentProvider Custom provider for file content (can be null).
-	 * @throws Exception 
+	 * @param caseMutexLock   A file lock indicating that the case should not be
+	 *                        opened by another TSK instance. Can be null. May
+	 *                        not be respected by older versions of TSK.
+	 *
+	 * @throws Exception
 	 */
-	private SleuthkitCase(CaseDbConnectionInfo info, String dbName, SleuthkitJNI.CaseDbHandle caseHandle, String caseDirPath, ContentStreamProvider contentProvider) throws Exception {
+	private SleuthkitCase(CaseDbConnectionInfo info, String dbName, SleuthkitJNI.CaseDbHandle caseHandle, String caseDirPath, ContentStreamProvider contentProvider, FileLock caseMutexLock) throws Exception {
 		this.dbPath = "";
 		this.databaseName = dbName;
 		this.dbType = info.getDbType();
@@ -401,6 +413,7 @@ public class SleuthkitCase {
 		this.caseHandle = caseHandle;
 		this.caseHandleIdentifier = caseHandle.getCaseDbIdentifier();
 		this.contentProvider = contentProvider;
+		this.caseMutexLock = caseMutexLock;
 		init();
 	}
 
@@ -10832,6 +10845,15 @@ public class SleuthkitCase {
 			logger.log(Level.SEVERE, "Error freeing case handle.", ex); //NON-NLS
 		} finally {
 			releaseSingleUserCaseWriteLock();
+		}
+		
+		try {			
+			if (this.caseMutexLock != null) {
+				this.caseMutexLock.close();
+				this.caseMutexLock = null;
+			}
+		} catch (IOException ex) {
+			logger.log(Level.SEVERE, "Error closing file mutex lock.", ex); //NON-NLS
 		}
 	}
 
