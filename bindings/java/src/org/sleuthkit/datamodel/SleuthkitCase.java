@@ -10919,7 +10919,10 @@ public class SleuthkitCase {
 		File lockFile = new File(caseDir, LOCK_FILE_NAME);
 		lockFileRaf = new RandomAccessFile(lockFile, "rw");
 		lockFileChannel = lockFileRaf.getChannel();
-		lockFileLock = lockFileChannel.lock();
+		lockFileLock = lockFileChannel.tryLock();
+		if (lockFileLock == null) {
+			throw new IllegalAccessException("Unable to acquire lock on " + lockFile);
+		}
 	}
 
 	@SuppressWarnings("deprecation")
