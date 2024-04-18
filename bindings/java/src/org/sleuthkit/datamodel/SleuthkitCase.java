@@ -36,11 +36,14 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.RandomAccessFile;
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.URLEncoder;
+import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -186,6 +189,7 @@ public class SleuthkitCase {
 	private static final String SCHEMA_MINOR_VERSION_KEY = "SCHEMA_MINOR_VERSION";
 	private static final String CREATION_SCHEMA_MAJOR_VERSION_KEY = "CREATION_SCHEMA_MAJOR_VERSION";
 	private static final String CREATION_SCHEMA_MINOR_VERSION_KEY = "CREATION_SCHEMA_MINOR_VERSION";
+	private static final String LOCK_FILE_NAME = "lock";
 
 	private final ConnectionPool connections;
 	private final Object carvedFileDirsLock = new Object();
@@ -211,8 +215,17 @@ public class SleuthkitCase {
 			= CacheBuilder.newBuilder().maximumSize(200000).expireAfterAccess(5, TimeUnit.MINUTES).build();
 	// custom provider for file bytes (can be null)
 	private final ContentStreamProvider contentProvider;
-	private FileLock caseMutexLock = null;
-	
+
+	/**
+	 * lockFileRef, lockFileChannel, and most importantly lockFileLock are
+	 * responsible for locking a file exclusively, thus preventing other
+	 * processes from locking the same file. If API users opt in to locking a
+	 * file, this will prevent simultaneous access from multiple processes.
+	 */
+	private RandomAccessFile lockFileRaf = null;
+	private FileChannel lockFileChannel = null;
+	private FileLock lockFileLock = null;
+
 	/*
 	 * First parameter is used to specify the SparseBitSet to use, as object IDs
 	 * can be larger than the max size of a SparseBitSet
@@ -356,33 +369,36 @@ public class SleuthkitCase {
 		}
 	}
 
+
 	/**
 	 * Private constructor, clients must use newCase() or openCase() method to
 	 * create an instance of this class.
 	 *
-	 * @param dbPath     The full path to a SQLite case database file.
-	 * @param caseHandle A handle to a case database object in the native code
-	 *                   SleuthKit layer.
-	 * @param dbType     The type of database we're dealing with
+	 * @param dbPath          The full path to a SQLite case database file.
+	 * @param caseHandle      A handle to a case database object in the native
+	 *                        code SleuthKit layer.
+	 * @param dbType          The type of database we're dealing with
 	 * @param contentProvider Custom provider for file content (can be null).
-	 * @param caseMutexLock   A file lock indicating that the case should not be
-	 *                        opened by another TSK instance. Can be null. May
-	 *                        not be respected by older versions of TSK.
-	 * 
+	 * @param lockFile        True if the case should be locked from other
+	 *                        application access. This prevents access only if
+	 *                        other applications opt in to the lockFile.
+	 *
 	 * @throws Exception
 	 */
-	private SleuthkitCase(String dbPath, SleuthkitJNI.CaseDbHandle caseHandle, DbType dbType, ContentStreamProvider contentProvider, FileLock caseMutexLock) throws Exception {
+	private SleuthkitCase(String dbPath, SleuthkitJNI.CaseDbHandle caseHandle, DbType dbType, ContentStreamProvider contentProvider, boolean lockFile) throws Exception {
 		Class.forName("org.sqlite.JDBC");
 		this.dbPath = dbPath;
 		this.dbType = dbType;
 		File dbFile = new File(dbPath);
 		this.caseDirPath = dbFile.getParentFile().getAbsolutePath();
+		if (lockFile) {
+			tryAcquireFileLock(this.caseDirPath);
+		}
 		this.databaseName = dbFile.getName();
 		this.connections = new SQLiteConnections(dbPath);
 		this.caseHandle = caseHandle;
 		this.caseHandleIdentifier = caseHandle.getCaseDbIdentifier();
 		this.contentProvider = contentProvider;
-		this.caseMutexLock = caseMutexLock;
 		init();
 		logSQLiteJDBCDriverInfo();
 	}
@@ -398,22 +414,24 @@ public class SleuthkitCase {
 	 *                        code
 	 * @param caseDirPath     The path to the root case directory.
 	 * @param contentProvider Custom provider for file content (can be null).
-	 * @param caseMutexLock   A file lock indicating that the case should not be
-	 *                        opened by another TSK instance. Can be null. May
-	 *                        not be respected by older versions of TSK.
+	 * @param lockFile        True if the case should be locked from other
+	 *                        application access. This prevents access only if
+	 *                        other applications opt in to the lockFile.
 	 *
 	 * @throws Exception
 	 */
-	private SleuthkitCase(CaseDbConnectionInfo info, String dbName, SleuthkitJNI.CaseDbHandle caseHandle, String caseDirPath, ContentStreamProvider contentProvider, FileLock caseMutexLock) throws Exception {
+	private SleuthkitCase(CaseDbConnectionInfo info, String dbName, SleuthkitJNI.CaseDbHandle caseHandle, String caseDirPath, ContentStreamProvider contentProvider, boolean lockFile) throws Exception {
 		this.dbPath = "";
 		this.databaseName = dbName;
 		this.dbType = info.getDbType();
 		this.caseDirPath = caseDirPath;
+		if (lockFile) {
+			tryAcquireFileLock(this.caseDirPath);
+		}
 		this.connections = new PostgreSQLConnections(info, dbName);
 		this.caseHandle = caseHandle;
 		this.caseHandleIdentifier = caseHandle.getCaseDbIdentifier();
 		this.contentProvider = contentProvider;
-		this.caseMutexLock = caseMutexLock;
 		init();
 	}
 
@@ -3063,9 +3081,28 @@ public class SleuthkitCase {
 	 */
 	@Beta
 	public static SleuthkitCase openCase(String dbPath, ContentStreamProvider provider) throws TskCoreException {
+		return openCase(dbPath, provider, false);
+	}
+	
+	/**
+	 * Open an existing case database.
+	 *
+	 * @param dbPath          Path to SQLite case database.
+	 * @param contentProvider Custom provider for file content bytes (can be
+	 *                        null).
+	 * @param lockFile        True if the case should be locked from other
+	 *                        application access. This prevents access only if
+	 *                        other applications opt in to the lockFile.
+	 *
+	 * @return Case database object.
+	 *
+	 * @throws org.sleuthkit.datamodel.TskCoreException
+	 */
+	@Beta
+	public static SleuthkitCase openCase(String dbPath, ContentStreamProvider provider, boolean lockFile) throws TskCoreException {
 		try {
 			final SleuthkitJNI.CaseDbHandle caseHandle = SleuthkitJNI.openCaseDb(dbPath);
-			return new SleuthkitCase(dbPath, caseHandle, DbType.SQLITE, provider);
+			return new SleuthkitCase(dbPath, caseHandle, DbType.SQLITE, provider, lockFile);
 		} catch (TskUnsupportedSchemaVersionException ex) {
 			//don't wrap in new TskCoreException
 			throw ex;
@@ -3073,6 +3110,7 @@ public class SleuthkitCase {
 			throw new TskCoreException("Failed to open case database at " + dbPath, ex);
 		}
 	}
+
 
 	/**
 	 * Open an existing multi-user case database.
@@ -3103,6 +3141,28 @@ public class SleuthkitCase {
 	 */
 	@Beta
 	public static SleuthkitCase openCase(String databaseName, CaseDbConnectionInfo info, String caseDir, ContentStreamProvider contentProvider) throws TskCoreException {
+		return openCase(databaseName, info, caseDir, contentProvider, false);
+	}
+
+
+	/**
+	 * Open an existing multi-user case database.
+	 *
+	 * @param databaseName    The name of the database.
+	 * @param info            Connection information for the the database.
+	 * @param caseDir         The folder where the case metadata fils is stored.
+	 * @param contentProvider Custom provider for file content bytes (can be
+	 *                        null).
+	 * @param lockFile        True if the case should be locked from other
+	 *                        application access. This prevents access only if
+	 *                        other applications opt in to the lockFile.
+	 *
+	 * @return A case database object.
+	 *
+	 * @throws TskCoreException If there is a problem opening the database.
+	 */
+	@Beta
+	public static SleuthkitCase openCase(String databaseName, CaseDbConnectionInfo info, String caseDir, ContentStreamProvider contentProvider, boolean lockFile) throws TskCoreException {
 		try {
 			/*
 			 * The flow of this method involves trying to open case and if
@@ -3117,7 +3177,7 @@ public class SleuthkitCase {
 			 * are able, but do not lose any information if unable.
 			 */
 			final SleuthkitJNI.CaseDbHandle caseHandle = SleuthkitJNI.openCaseDb(databaseName, info);
-			return new SleuthkitCase(info, databaseName, caseHandle, caseDir, contentProvider);
+			return new SleuthkitCase(info, databaseName, caseHandle, caseDir, contentProvider, lockFile);
 		} catch (PropertyVetoException exp) {
 			// In this case, the JDBC driver doesn't support PostgreSQL. Use the generic message here.
 			throw new TskCoreException(exp.getMessage(), exp);
@@ -3155,12 +3215,30 @@ public class SleuthkitCase {
 	 */
 	@Beta
 	public static SleuthkitCase newCase(String dbPath, ContentStreamProvider contentProvider) throws TskCoreException {
+		return newCase(dbPath, contentProvider, false);
+	}
+
+	/**
+	 * Creates a new SQLite case database.
+	 *
+	 * @param dbPath Path to where SQlite case database should be created.
+	 * @param contentProvider Custom provider for file bytes (can be null).
+	 * @param lockFile        True if the case should be locked from other
+	 *                        application access. This prevents access only if
+	 *                        other applications opt in to the lockFile.
+	 *
+	 * @return A case database object.
+	 *
+	 * @throws org.sleuthkit.datamodel.TskCoreException
+	 */
+	@Beta
+	public static SleuthkitCase newCase(String dbPath, ContentStreamProvider contentProvider, boolean lockFile) throws TskCoreException {
 		try {
 			CaseDatabaseFactory factory = new CaseDatabaseFactory(dbPath);
 			factory.createCaseDatabase();
 
 			SleuthkitJNI.CaseDbHandle caseHandle = SleuthkitJNI.openCaseDb(dbPath);
-			return new SleuthkitCase(dbPath, caseHandle, DbType.SQLITE, contentProvider);
+			return new SleuthkitCase(dbPath, caseHandle, DbType.SQLITE, contentProvider, lockFile);
 		} catch (Exception ex) {
 			throw new TskCoreException("Failed to create case database at " + dbPath, ex);
 		}
@@ -3204,6 +3282,31 @@ public class SleuthkitCase {
 	 */
 	@Beta
 	public static SleuthkitCase newCase(String caseName, CaseDbConnectionInfo info, String caseDirPath, ContentStreamProvider contentProvider) throws TskCoreException {
+		return newCase(caseName, info, caseDirPath, contentProvider, false);
+	}
+
+	
+	/**
+	 * Creates a new PostgreSQL case database.
+	 *
+	 * @param caseName    The name of the case. It will be used to create a case
+	 *                    database name that can be safely used in SQL commands
+	 *                    and will not be subject to name collisions on the case
+	 *                    database server. Use getDatabaseName to get the
+	 *                    created name.
+	 * @param info        The information to connect to the database.
+	 * @param caseDirPath The case directory path.
+	 * @param contentProvider Custom provider for file bytes (can be null).
+	 * @param lockFile        True if the case should be locked from other
+	 *                        application access. This prevents access only if
+	 *                        other applications opt in to the lockFile.
+	 * 
+	 * @return A case database object.
+	 *
+	 * @throws org.sleuthkit.datamodel.TskCoreException
+	 */
+	@Beta
+	public static SleuthkitCase newCase(String caseName, CaseDbConnectionInfo info, String caseDirPath, ContentStreamProvider contentProvider, boolean lockFile) throws TskCoreException {
 		String databaseName = createCaseDataBaseName(caseName);
 		try {
 			/**
@@ -3222,7 +3325,7 @@ public class SleuthkitCase {
 			factory.createCaseDatabase();
 
 			final SleuthkitJNI.CaseDbHandle caseHandle = SleuthkitJNI.openCaseDb(databaseName, info);
-			return new SleuthkitCase(info, databaseName, caseHandle, caseDirPath, contentProvider);
+			return new SleuthkitCase(info, databaseName, caseHandle, caseDirPath, contentProvider, lockFile);
 		} catch (PropertyVetoException exp) {
 			// In this case, the JDBC driver doesn't support PostgreSQL. Use the generic message here.
 			throw new TskCoreException(exp.getMessage(), exp);
@@ -10811,6 +10914,13 @@ public class SleuthkitCase {
 	String getCaseHandleIdentifier() {
 		return caseHandleIdentifier;
 	}
+	
+	private void tryAcquireFileLock(String caseDir) throws IllegalAccessException, IOException {
+		File lockFile = new File(caseDir, LOCK_FILE_NAME);
+		lockFileRaf = new RandomAccessFile(lockFile, "rw");
+		lockFileChannel = lockFileRaf.getChannel();
+		lockFileLock = lockFileChannel.lock();
+	}
 
 	@SuppressWarnings("deprecation")
 	@Override
@@ -10848,12 +10958,30 @@ public class SleuthkitCase {
 		}
 		
 		try {			
-			if (this.caseMutexLock != null) {
-				this.caseMutexLock.close();
-				this.caseMutexLock = null;
+			if (this.lockFileLock != null) {
+				this.lockFileLock.close();
+				this.lockFileLock = null;
 			}
 		} catch (IOException ex) {
-			logger.log(Level.SEVERE, "Error closing file mutex lock.", ex); //NON-NLS
+			logger.log(Level.SEVERE, "Error closing lock file lock.", ex); //NON-NLS
+		}
+		
+		try {			
+			if (this.lockFileChannel != null) {
+				this.lockFileChannel.close();
+				this.lockFileChannel = null;
+			}
+		} catch (IOException ex) {
+			logger.log(Level.SEVERE, "Error closing lock file channel.", ex); //NON-NLS
+		}
+				
+		try {			
+			if (this.lockFileRaf != null) {
+				this.lockFileRaf.close();
+				this.lockFileRaf = null;
+			}
+		} catch (IOException ex) {
+			logger.log(Level.SEVERE, "Error closing lock file random access file.", ex); //NON-NLS
 		}
 	}
 
