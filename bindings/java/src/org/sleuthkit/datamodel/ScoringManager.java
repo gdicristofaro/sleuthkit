@@ -396,7 +396,6 @@ public class ScoringManager {
 		}
 	}
 
-	
 	/**
 	 * Gets the contents with the specified score. Uses the specified
 	 * database connection.
@@ -429,7 +428,7 @@ public class ScoringManager {
 	}
 	
 	
-		/**
+	/**
 	 * Get the contents with the specified score.
 	 *
 	 * @param dataSourceObjectId Data source object id.
