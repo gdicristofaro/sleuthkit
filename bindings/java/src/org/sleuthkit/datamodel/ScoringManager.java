@@ -18,6 +18,7 @@
  */
 package org.sleuthkit.datamodel;
 
+import com.google.common.annotations.Beta;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -395,6 +396,7 @@ public class ScoringManager {
 		}
 	}
 
+	
 	/**
 	 * Gets the contents with the specified score. Uses the specified
 	 * database connection.
@@ -411,6 +413,62 @@ public class ScoringManager {
 		String queryString = "SELECT obj_id FROM tsk_aggregate_score"
 				+ " WHERE data_source_obj_id = " + dataSourceObjectId 
 				+ " AND significance = " + significance.getId();
+			
+		try (Statement statement = connection.createStatement();
+				ResultSet resultSet = connection.executeQuery(statement, queryString);) {
+
+			List<Content> items = new ArrayList<>();
+			while (resultSet.next()) {
+				long objId = resultSet.getLong("obj_id");
+				items.add(db.getContentById(objId));
+			}
+			return items;
+		} catch (SQLException ex) {
+			throw new TskCoreException("Error getting list of items with significance = " + significance.toString(), ex);
+		} 
+	}
+	
+	
+		/**
+	 * Get the contents with the specified score.
+	 *
+	 * @param dataSourceObjectId Data source object id.
+	 * @param significance       Significance to look for.
+	 * @param priority			 Priority to look for.
+	 *
+	 * @return Collection of contents with given score.
+	 * 
+	 * @throws TskCoreException if there is an error getting the contents.
+	 */
+	@Beta
+	public List<Content> getContent(long dataSourceObjectId, Score.Significance significance, Score.Priority priority) throws TskCoreException {
+		db.acquireSingleUserCaseReadLock();
+		try (CaseDbConnection connection = db.getConnection()) {
+			return getContent(dataSourceObjectId, significance, priority, connection);
+		} finally {
+			db.releaseSingleUserCaseReadLock();
+		}
+	}
+	
+	
+	/**
+	 * Gets the contents with the specified score. Uses the specified
+	 * database connection.
+	 *
+	 * @param dataSourceObjectId Data source object id.
+	 * @param significance       Significance to look for.
+	 * @param priority			 Priority to look for.
+	 * @param connection         Connection to use for the query.
+	 *
+	 * @return List of contents with given score.
+	 *
+	 * @throws TskCoreException
+	 */
+	private List<Content> getContent(long dataSourceObjectId, Score.Significance significance, Score.Priority priority, CaseDbConnection connection) throws TskCoreException {
+		String queryString = "SELECT obj_id FROM tsk_aggregate_score"
+				+ " WHERE data_source_obj_id = " + dataSourceObjectId 
+				+ " AND significance = " + significance.getId()
+				+ " AND priority = " + priority.getId();
 			
 		try (Statement statement = connection.createStatement();
 				ResultSet resultSet = connection.executeQuery(statement, queryString);) {
