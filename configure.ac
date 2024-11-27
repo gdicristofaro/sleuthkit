@@ -346,4 +346,5 @@ Features:
    java found:                            $JAVA
    enable java:                           $enable_java
    jni headers:                           $ac_cv_jni_header_path
+   jinc:                                  $_JINC
 ])

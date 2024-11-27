@@ -74,6 +74,9 @@ fi
 case "$host_os" in
         darwin*)        # Apple Java headers are inside the Xcode bundle.
             macos_version=$(sw_vers -productVersion | sed -n -e 's/^@<:@0-9@:>@*.\(@<:@0-9@:>@*\).@<:@0-9@:>@*/\1/p')
+            AC_MSG_NOTICE([
+              mac os version is: $macos_version
+            ])
             if @<:@ "$macos_version" -gt "7" @:>@; then
                 _JTOPDIR="$(xcrun --show-sdk-path)/System/Library/Frameworks/JavaVM.framework"
                 _JINC="$_JTOPDIR/Headers"
