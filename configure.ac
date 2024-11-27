@@ -340,4 +340,9 @@ Building:
 Features:
    Java/JNI support:                      $ax_java_support
    Multithreading:                        $ax_multithread
+
+   cppflags:                              $JNI_CPPFLAGS
+   ant found:                             $ANT_FOUND
+   java found:                            $JAVA
+   enable java:                           $enable_java
 ])
