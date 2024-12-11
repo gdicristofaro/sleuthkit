@@ -20,9 +20,14 @@ void test_hdb_binsrch_idx_init_hash_type_info(
 
     if (expected_return == 0)
     {
+        // if successful call, do comparisons
         REQUIRE(hdb_binsrch_info.hash_len == expected_hash_len);
         REQUIRE(TSTRCMP(hdb_binsrch_info.idx_fname, expected_idx_fname) == 0);
         REQUIRE(TSTRCMP(hdb_binsrch_info.idx_idx_fname, expected_idx_idx_fname) == 0);
+
+        // cleanup allocated items from hdb_binsrch_idx_init_hash_type_info
+        free(hdb_binsrch_info.idx_fname);
+        free(hdb_binsrch_info.idx_idx_fname);
     }
 }
 
