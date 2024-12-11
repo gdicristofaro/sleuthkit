@@ -13,7 +13,7 @@ void test_hdb_binsrch_idx_init_hash_type_info(
     TSK_HDB_BINSRCH_INFO hdb_binsrch_info;
 
     hdb_binsrch_info.hash_type = TSK_HDB_HTYPE_INVALID_ID;
-    hdb_binsrch_info.base.db_fname = db_name;
+    hdb_binsrch_info.base.db_fname = (TSK_TCHAR*) db_name;
     int ret_val = hdb_binsrch_idx_init_hash_type_info(&hdb_binsrch_info, htype);
 
     REQUIRE(ret_val == expected_return);
