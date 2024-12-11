@@ -27,41 +27,41 @@ void test_hdb_binsrch_idx_init_hash_type_info(
 
 TEST_CASE("test hdb_binsrch_idx_init_hash_type_info with md5 db type") {
     test_hdb_binsrch_idx_init_hash_type_info(
-        _TSK_T("C:\\path\\to\\file.txt"), 
+        &_TSK_T("C:\\path\\to\\file.txt"), 
         TSK_HDB_HTYPE_MD5_ID, 
         0, 
         TSK_HDB_HTYPE_MD5_LEN, 
-        _TSK_T("C:\\path\\to\\file.txt-md5.idx"),
-        _TSK_T("C:\\path\\to\\file.txt-md5.idx2"));
+        &_TSK_T("C:\\path\\to\\file.txt-md5.idx"),
+        &_TSK_T("C:\\path\\to\\file.txt-md5.idx2"));
 }
 
 
 TEST_CASE("test hdb_binsrch_idx_init_hash_type_info with sha1 db type") {
     test_hdb_binsrch_idx_init_hash_type_info(
-        _TSK_T("C:\\path\\to\\file.txt"), 
+        &_TSK_T("C:\\path\\to\\file.txt"), 
         TSK_HDB_HTYPE_SHA1_ID, 
         0, 
         TSK_HDB_HTYPE_SHA1_LEN, 
-        _TSK_T("C:\\path\\to\\file.txt-sha1.idx"),
-        _TSK_T("C:\\path\\to\\file.txt-sha1.idx2"));
+        &_TSK_T("C:\\path\\to\\file.txt-sha1.idx"),
+        &_TSK_T("C:\\path\\to\\file.txt-sha1.idx2"));
 }
 
 TEST_CASE("test hdb_binsrch_idx_init_hash_type_info with sha256 db type (error)") {
     test_hdb_binsrch_idx_init_hash_type_info(
-        _TSK_T("C:\\path\\to\\file.txt"), 
+        &_TSK_T("C:\\path\\to\\file.txt"), 
         TSK_HDB_HTYPE_SHA2_256_ID, 
         1, 
         TSK_HDB_HTYPE_INVALID_ID, 
-        _TSK_T(""),
-        _TSK_T(""));
+        &_TSK_T(""),
+        &_TSK_T(""));
 }
 
 TEST_CASE("test hdb_binsrch_idx_init_hash_type_info with invalid db type (error)") {
     test_hdb_binsrch_idx_init_hash_type_info(
-        _TSK_T("C:\\path\\to\\file.txt"), 
+        &_TSK_T("C:\\path\\to\\file.txt"), 
         TSK_HDB_HTYPE_INVALID_ID, 
         1, 
         TSK_HDB_HTYPE_INVALID_ID, 
-        _TSK_T(""),
-        _TSK_T(""));
+        &_TSK_T(""),
+        &_TSK_T(""));
 }
