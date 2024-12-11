@@ -24,9 +24,14 @@ void test_hdb_binsrch_idx_init_hash_type_info(
         REQUIRE(hdb_binsrch_info.hash_len == expected_hash_len);
         REQUIRE(TSTRCMP(hdb_binsrch_info.idx_fname, expected_idx_fname) == 0);
         REQUIRE(TSTRCMP(hdb_binsrch_info.idx_idx_fname, expected_idx_idx_fname) == 0);
+    }
 
-        // cleanup allocated items from hdb_binsrch_idx_init_hash_type_info
+    // cleanup allocated items from hdb_binsrch_idx_init_hash_type_info
+    if (hdb_binsrch_info.idx_fname != NULL) {
         free(hdb_binsrch_info.idx_fname);
+    }
+
+    if (hdb_binsrch_info.idx_idx_fname != NULL) {
         free(hdb_binsrch_info.idx_idx_fname);
     }
 }
