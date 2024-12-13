@@ -3,6 +3,8 @@
 #include "catch.hpp"
 
 
+#include <iostream>
+
 void hdb_binsrch_index_close(TSK_HDB_BINSRCH_INFO *hdb_binsrch_info) {
     hdb_binsrch_close((TSK_HDB_INFO *) hdb_binsrch_info);
 }
@@ -15,10 +17,15 @@ void test_hdb_binsrch_idx_init_hash_type_info(
     const TSK_TCHAR *expected_idx_fname,
     const TSK_TCHAR *expected_idx_idx_fname)
 {
+
+    std::cout << "intializing ptr";
+
     std::unique_ptr<TSK_HDB_BINSRCH_INFO, decltype(&hdb_binsrch_index_close)> hdb_binsrch_info{
         new TSK_HDB_BINSRCH_INFO{},
         &hdb_binsrch_index_close
     };
+
+    std::cout << "setting values";
 
     /**
      * setup values:
@@ -28,7 +35,12 @@ void test_hdb_binsrch_idx_init_hash_type_info(
     hdb_binsrch_info->hash_type = TSK_HDB_HTYPE_INVALID_ID;
     // this value is read only in hdb_binsrch_idx_init_hash_type_info
     hdb_binsrch_info->base.db_fname = (TSK_TCHAR *)db_name;
+
+    std::cout << "running output";
+
     int ret_val = hdb_binsrch_idx_init_hash_type_info(hdb_binsrch_info.get(), htype);
+
+    std::cout << "checking output";
 
     CHECK(ret_val == expected_return);
 
@@ -39,6 +51,8 @@ void test_hdb_binsrch_idx_init_hash_type_info(
         CHECK(TSTRCMP(hdb_binsrch_info->idx_fname, expected_idx_fname) == 0);
         CHECK(TSTRCMP(hdb_binsrch_info->idx_idx_fname, expected_idx_idx_fname) == 0);
     }
+
+    std::cout << "all done";
 }
 
 TEST_CASE("test hdb_binsrch_idx_init_hash_type_info with md5 db type")
