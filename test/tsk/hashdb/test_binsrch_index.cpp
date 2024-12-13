@@ -16,7 +16,7 @@ void test_hdb_binsrch_idx_init_hash_type_info(
     const TSK_TCHAR *expected_idx_idx_fname)
 {
     std::unique_ptr<TSK_HDB_BINSRCH_INFO, decltype(&hdb_binsrch_index_close)> hdb_binsrch_info{
-        new TSK_HDB_BINSRCH_INFO{},
+        (TSK_HDB_BINSRCH_INFO *) tsk_malloc(sizeof(TSK_HDB_BINSRCH_INFO)),
         &hdb_binsrch_index_close
     };
 
@@ -28,7 +28,6 @@ void test_hdb_binsrch_idx_init_hash_type_info(
     hdb_binsrch_info->hash_type = TSK_HDB_HTYPE_INVALID_ID;
     
     TSK_TCHAR* db_name_cpy = (TSK_TCHAR*)tsk_malloc((TSTRLEN(db_name) + 1) * sizeof(TSK_TCHAR));
-    REQUIRE(db_name_cpy != NULL);
     TSTRNCPY(db_name_cpy, db_name, TSTRLEN(db_name) + 1);
     hdb_binsrch_info->base.db_fname = db_name_cpy;
     
