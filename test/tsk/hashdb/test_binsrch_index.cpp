@@ -2,6 +2,11 @@
 #include "tsk/hashdb/tsk_hashdb_i.h"
 #include "catch.hpp"
 
+
+void hdb_binsrch_index_close(TSK_HDB_BINSRCH_INFO *hdb_binsrch_info) {
+    hdb_binsrch_close((TSK_HDB_INFO *) hdb_binsrch_info);
+}
+
 void test_hdb_binsrch_idx_init_hash_type_info(
     const TSK_TCHAR *db_name,
     TSK_HDB_HTYPE_ENUM htype,
@@ -10,10 +15,9 @@ void test_hdb_binsrch_idx_init_hash_type_info(
     const TSK_TCHAR *expected_idx_fname,
     const TSK_TCHAR *expected_idx_idx_fname)
 {
-    TSK_HDB_BINSRCH_INFO* hdb_binsrch_info = new TSK_HDB_BINSRCH_INFO{};
-    std::unique_ptr<TSK_HDB_INFO, decltype(&hdb_binsrch_close)> hdb_binsrch_info_ptr{
-        (TSK_HDB_INFO *) hdb_binsrch_info,
-        &hdb_binsrch_close
+    std::unique_ptr<TSK_HDB_BINSRCH_INFO, decltype(&hdb_binsrch_index_close)> hdb_binsrch_info{
+        new TSK_HDB_BINSRCH_INFO{},
+        &hdb_binsrch_index_close
     };
 
     /**
@@ -24,7 +28,7 @@ void test_hdb_binsrch_idx_init_hash_type_info(
     hdb_binsrch_info->hash_type = TSK_HDB_HTYPE_INVALID_ID;
     // this value is read only in hdb_binsrch_idx_init_hash_type_info
     hdb_binsrch_info->base.db_fname = (TSK_TCHAR *)db_name;
-    int ret_val = hdb_binsrch_idx_init_hash_type_info(hdb_binsrch_info, htype);
+    int ret_val = hdb_binsrch_idx_init_hash_type_info(hdb_binsrch_info.get(), htype);
 
     CHECK(ret_val == expected_return);
 
