@@ -30,6 +30,7 @@ void test_hdb_binsrch_idx_init_hash_type_info(
     TSK_TCHAR* db_name_cpy = (TSK_TCHAR*)tsk_malloc((TSTRLEN(db_name) + 1) * sizeof(TSK_TCHAR));
     REQUIRE(db_name_cpy != NULL);
     TSTRNCPY(db_name_cpy, db_name, TSTRLEN(db_name) + 1);
+    hdb_binsrch_info->base.db_fname = db_name_cpy;
     
     int ret_val = hdb_binsrch_idx_init_hash_type_info(hdb_binsrch_info.get(), htype);
 
