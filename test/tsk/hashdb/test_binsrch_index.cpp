@@ -10,12 +10,10 @@ void test_hdb_binsrch_idx_init_hash_type_info(
     const TSK_TCHAR *expected_idx_fname,
     const TSK_TCHAR *expected_idx_idx_fname)
 {
-    TSK_HDB_BINSRCH_INFO* hdb_binsrch_info = (TSK_HDB_BINSRCH_INFO *) tsk_malloc(sizeof(TSK_HDB_BINSRCH_INFO));
-    REQUIRE(hdb_binsrch_info != NULL);
-
+    TSK_HDB_BINSRCH_INFO* hdb_binsrch_info = new TSK_HDB_BINSRCH_INFO{};
     std::unique_ptr<TSK_HDB_INFO, decltype(&hdb_binsrch_close)> hdb_binsrch_info_ptr{
         (TSK_HDB_INFO *) hdb_binsrch_info,
-        hdb_binsrch_close
+        &hdb_binsrch_close
     };
 
     /**
