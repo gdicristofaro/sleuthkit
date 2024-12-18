@@ -23,7 +23,7 @@
 	<MbedTlsInclude Condition="'$(Platform)' == 'x64'">$(SolutionDir)\packages\mbedtls-v143-static.3.5.0\build\native\include</MbedTlsInclude>
 	<MbedTlsLib Condition="'$(Platform)' == 'Win32'">$(SolutionDir)\packages\mbedtls-v143-static.3.5.0\build\native\Win32\v143\lib\Release</MbedTlsLib>
 	<MbedTlsLib Condition="'$(Platform)' == 'x64'">$(SolutionDir)\packages\mbedtls-v143-static.3.5.0\build\native\x64\v143\lib\Release</MbedTlsLib>
-	<TskNugetIncludes>$(LibVmdkInclude);$(LibVhdiInclude);$(LibEwfInclude);$(ZlibInclude);$(OpenSslInclude);$(MbedTlsInclude)</TskNugetIncludes>
-	<TskNugetLibs>$(LibVmdkLib);$(LibVhdiLib);$(LibEwfLib);$(ZlibLib);$(OpenSslLib);$(MbedTlsLib);</TskNugetLibs>
+	<TskNugetIncludes>$(LibVmdkInclude);$(LibVsLvmInclude);$(LibVhdiInclude);$(LibEwfInclude);$(ZlibInclude);$(OpenSslInclude);$(MbedTlsInclude)</TskNugetIncludes>
+	<TskNugetLibs>$(LibVmdkLib);$(LibVsLvmLib);$(LibVhdiLib);$(LibEwfLib);$(ZlibLib);$(OpenSslLib);$(MbedTlsLib);</TskNugetLibs>
   </PropertyGroup>
 </Project>
