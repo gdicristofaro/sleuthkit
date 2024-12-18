@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
-    <LibVmdkInclude>$(SolutionDir)\packages\skl-libvmdk.20240828.0.0\lib\native\include</LibVmdkInclude>
+	<LibVsLvmInclude>$(SolutionDir)\packages\libvslvm.20240504.0.0\lib\native\include</LibVsLvmInclude>
+    <LibVsLvmLib Condition="'$(Platform)' == 'Win32'">$(SolutionDir)\packages\libvslvm.20240504.0.0\lib\native\lib\Win32</LibVsLvmLib>
+    <LibVsLvmLib Condition="'$(Platform)' == 'x64'">$(SolutionDir)\packages\libvslvm.20240504.0.0\lib\native\lib\x64</LibVsLvmLib>
+	<LibVmdkInclude>$(SolutionDir)\packages\skl-libvmdk.20240828.0.0\lib\native\include</LibVmdkInclude>
     <LibVmdkLib Condition="'$(Platform)' == 'Win32'">$(SolutionDir)\packages\skl-libvmdk.20240828.0.0\lib\native\lib\Win32</LibVmdkLib>
     <LibVmdkLib Condition="'$(Platform)' == 'x64'">$(SolutionDir)\packages\skl-libvmdk.20240828.0.0\lib\native\lib\x64</LibVmdkLib>
     <LibVhdiInclude>$(SolutionDir)\packages\libvhdi.20240303.0.0\lib\native\include</LibVhdiInclude>
