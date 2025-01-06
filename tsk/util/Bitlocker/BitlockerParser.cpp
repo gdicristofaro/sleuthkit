@@ -1178,6 +1178,8 @@ ssize_t BitlockerParser::readAndDecryptSectors(TSK_DADDR_T offsetInVolume, size_
         return -1;
     }
 
+    tsk_take_lock(&m_decrypt_sector_lock);
+    
     if (offsetInVolume >= m_volumeHeaderSize) {
         // All sectors should be in their normal spot on disk
         ssize_t ret_len = tsk_img_read(m_img_info, offsetInVolume + m_volumeOffset, (char*)data, len);
@@ -1187,6 +1189,7 @@ ssize_t BitlockerParser::readAndDecryptSectors(TSK_DADDR_T offsetInVolume, size_
                 decryptSector(i + offsetInVolume, &(data[i]));
             }
         }
+        tsk_release_lock(&m_decrypt_sector_lock);
         return ret_len;
     }
 
@@ -1198,6 +1201,7 @@ ssize_t BitlockerParser::readAndDecryptSectors(TSK_DADDR_T offsetInVolume, size_
 
     if (nRelocatedBytesToRead <= 0) {
         writeError("BitlockerParser::readAndDecryptSectors: Error reading from volume header");
+        tsk_release_lock(&m_decrypt_sector_lock);
         return -1;
     }
     if (nRelocatedBytesToRead > INT_MAX) {
@@ -1209,6 +1213,7 @@ ssize_t BitlockerParser::readAndDecryptSectors(TSK_DADDR_T offsetInVolume, size_
     TSK_DADDR_T volumeOffsetToRead = convertVolumeOffset(offsetInVolume);
     ssize_t ret_len = tsk_img_read(m_img_info, volumeOffsetToRead + m_volumeOffset, (char*)data, relocatedBytesToReadUint32);
     if (ret_len <= 0) {
+        tsk_release_lock(&m_decrypt_sector_lock);
         return 0;
     }
 
@@ -1220,6 +1225,7 @@ ssize_t BitlockerParser::readAndDecryptSectors(TSK_DADDR_T offsetInVolume, size_
     // - We read in the total bytes we wanted (i.e. we don't need to read any sectors outside the volume header)
     // - We didn't read in the expected number of bytes from the volume header. Just return what we have.
     if ((size_t)ret_len >= len || ret_len != relocatedBytesToReadUint32) {
+        tsk_release_lock(&m_decrypt_sector_lock);
         return ret_len;
     }
 
@@ -1229,6 +1235,7 @@ ssize_t BitlockerParser::readAndDecryptSectors(TSK_DADDR_T offsetInVolume, size_
 
     ssize_t ret_len2 = tsk_img_read(m_img_info, volumeOffsetToRead + m_volumeOffset, (char*)(&data[ret_len]), bytesLeft);
     if (ret_len2 == 0) {
+        tsk_release_lock(&m_decrypt_sector_lock);
         return ret_len;
     }
 
@@ -1242,6 +1249,7 @@ ssize_t BitlockerParser::readAndDecryptSectors(TSK_DADDR_T offsetInVolume, size_
         bytesLeft -= m_sectorSize;
     }
 
+    tsk_release_lock(&m_decrypt_sector_lock);
     return ret_len + ret_len2;
 }
 
@@ -1270,7 +1278,6 @@ int BitlockerParser::decryptSector(TSK_DADDR_T volumeOffset, uint8_t* data) {
         return 0;
     }
 
-    tsk_take_lock(&m_decrypt_sector_lock);
     int result = 0;
     if (isAESCBC(m_encryptionType)) {
         if (usesDiffuser(m_encryptionType)) {
@@ -1287,7 +1294,6 @@ int BitlockerParser::decryptSector(TSK_DADDR_T volumeOffset, uint8_t* data) {
         writeError("BitlockerParser::decryptSector: Encryption method not currently supported - " + convertEncryptionTypeToString(m_encryptionType));
         result = -1;
     }
-    tsk_release_lock(&m_decrypt_sector_lock);
     return result;
 }
 
