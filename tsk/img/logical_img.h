@@ -8,7 +8,7 @@
 **
 */
 
-/* 
+/*
  * Contains the logical directory image-specific functions and structures.
  */
 
@@ -22,7 +22,7 @@ extern "C" {
 #define LOGICAL_IMG_DEBUG_PRINT 0
 #define LOGICAL_IMG_CACHE_AGE   1000
 #define LOGICAL_FILE_HANDLE_CACHE_LEN 10
-#define LOGICAL_INUM_CACHE_LEN 1000
+#define LOGICAL_INUM_CACHE_LEN 3000
 #define LOGICAL_INUM_CACHE_MAX_AGE 10000
 #define LOGICAL_INUM_CACHE_MAX_PATH_LEN 500
 #define LOGICAL_INVALID_INUM 0
@@ -51,7 +51,7 @@ extern "C" {
 		// Goes with the cache handling in tsk_img.h.
 		// To cache blocks, we need to keep track of both the file inum and the offset,
 		// so we need one additional array to track logical file data.
-		TSK_INUM_T cache_inum[TSK_IMG_INFO_CACHE_NUM];    ///< starting byte offset of corresponding cache entry (r/w shared - lock) 
+		TSK_INUM_T cache_inum[TSK_IMG_INFO_CACHE_NUM];    ///< starting byte offset of corresponding cache entry (r/w shared - lock)
 
 		// Cache a number of open file handles (protected by cache_lock)
 		LOGICAL_FILE_HANDLE_CACHE file_handle_cache[LOGICAL_FILE_HANDLE_CACHE_LEN];     /* small number of fds for open images */
