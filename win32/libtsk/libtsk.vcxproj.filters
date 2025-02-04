@@ -432,6 +432,15 @@
     <ClCompile Include="..\..\tsk\util\Bitlocker\MetadataValueUnicode.cpp">
       <Filter>util\Bitlocker</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\tsk\pool\img_bfio_handle.cpp">
+      <Filter>pool</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\tsk\pool\lvm_pool.cpp">
+      <Filter>pool</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\tsk\pool\lvm_pool_compat.cpp">
+      <Filter>pool</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\tsk\vs\tsk_bsd.h">
@@ -662,6 +671,15 @@
     </ClInclude>
     <ClInclude Include="..\..\tsk\util\Bitlocker\MetadataValueUnicode.h">
       <Filter>util\Bitlocker</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\tsk\pool\img_bfio_handle.h">
+      <Filter>pool</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\tsk\pool\lvm_pool_compat.hpp">
+      <Filter>pool</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\tsk\pool\tsk_lvm.hpp">
+      <Filter>pool</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -419,6 +419,9 @@ xcopy /E /Y "$(VCInstallDir)\redist\MSVC\$(VCToolsRedistVersion)\$(PlatformTarge
     <ClCompile Include="..\..\tsk\img\vmdk.cpp" />
     <ClCompile Include="..\..\tsk\pool\apfs_pool_compat.cpp" />
     <ClCompile Include="..\..\tsk\pool\apfs_pool.cpp" />
+    <ClCompile Include="..\..\tsk\pool\img_bfio_handle.cpp" />
+    <ClCompile Include="..\..\tsk\pool\lvm_pool.cpp" />
+    <ClCompile Include="..\..\tsk\pool\lvm_pool_compat.cpp" />
     <ClCompile Include="..\..\tsk\pool\pool_open.cpp" />
     <ClCompile Include="..\..\tsk\pool\pool_read.cpp" />
     <ClCompile Include="..\..\tsk\pool\pool_types.cpp" />
@@ -551,9 +554,12 @@ xcopy /E /Y "$(VCInstallDir)\redist\MSVC\$(VCToolsRedistVersion)\$(PlatformTarge
     <ClInclude Include="..\..\tsk\img\vmdk.h" />
     <ClInclude Include="..\..\tsk\libtsk.h" />
     <ClInclude Include="..\..\tsk\pool\apfs_pool_compat.hpp" />
+    <ClInclude Include="..\..\tsk\pool\img_bfio_handle.h" />
+    <ClInclude Include="..\..\tsk\pool\lvm_pool_compat.hpp" />
     <ClInclude Include="..\..\tsk\pool\pool_compat.hpp" />
     <ClInclude Include="..\..\tsk\pool\tsk_apfs.h" />
     <ClInclude Include="..\..\tsk\pool\tsk_apfs.hpp" />
+    <ClInclude Include="..\..\tsk\pool\tsk_lvm.hpp" />
     <ClInclude Include="..\..\tsk\pool\tsk_pool.h" />
     <ClInclude Include="..\..\tsk\pool\tsk_pool.hpp" />
     <ClInclude Include="..\..\tsk\util\Bitlocker\BitlockerParser.h" />
