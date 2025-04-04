@@ -235,6 +235,10 @@ public class SleuthkitCase {
 	
 	// the total time taken to run PRAGMA OPTIMIZE. 
 	private final AtomicLong timeInOptimize = new AtomicLong(0);
+	
+	private static final long MAX_TIME_BETWEEN_OPTIMIZE = 5 * 60 * 1000;
+	
+	private final Map<String, AtomicLong> minNextOptimize = new HashMap<>();
 				
 	private long nextArtifactId; // Used to ensure artifact ids come from the desired range.
 	// This read/write lock is used to implement a layer of locking on top of
@@ -11216,7 +11220,7 @@ public class SleuthkitCase {
 		}
 				
 		if (SleuthkitCase.this.dbType == DbType.SQLITE) {
-			logger.info("Time running optimize was " + this.timeInOptimize + "ms.");
+			logger.info("Time running optimize was " + this.timeInOptimize + "ms for " + this.minNextOptimize.size() + " querying connections.");
 		}
 	}
 
@@ -14020,11 +14024,83 @@ public class SleuthkitCase {
 
 			}
 		}
+		
+		/**
+		 * Base class for a QueryCommand (i.e. ExecutePreparedStatementQuery,
+		 * ExecuteQuery). This provides functionality for running PRAGMA
+		 * optimize for sqlite functions to improve performance. See
+		 * https://www.sqlite.org/pragma.html#pragma_optimize for more details.
+		 */
+		abstract class QueryCommand {
+			/**
+			 * Returns a statement where PRAGMA optimize can be run.
+			 * @param conn The connection where the statement could be created.
+			 * @return The statement.
+			 * @throws SQLException 
+			 */
+			abstract Statement getStatement(java.sql.Connection conn) throws SQLException;
+			
+			/**
+			 * Returns this underlying connection.
+			 * @return The connection.
+			 * @throws SQLException 
+			 */
+			abstract java.sql.Connection getConnection() throws SQLException;
+			
+			protected void runOptimize() throws SQLException {
+				if (SleuthkitCase.this.dbType == DbType.SQLITE) {
+					// run pragma optimize before start
+					long thisStart = System.currentTimeMillis();
+					java.sql.Connection conn = getConnection();
+					String identifier = conn.toString();
+					AtomicLong nextUpdate = minNextOptimize.get(identifier);
+					
+					if (nextUpdate == null) {
+						// run optimize; assume for the first time
+						try (Statement statement = getStatement(conn)) {
+							statement.execute("PRAGMA optimize=0x10002");
+						} catch (Throwable t) {
+							logger.log(Level.WARNING, "Unable to do initial optimization of database", t);
+						}
+						minNextOptimize.put(identifier, new AtomicLong(thisStart + MAX_TIME_BETWEEN_OPTIMIZE));
+					} else {
+						/**
+						 * Atomically checks the minimum next run time and
+						 * updates if necessary. If current start time is
+						 * greater than or equal to the current minNextRun time,
+						 * the minNextRun time will be updated to be the current
+						 * start time with OPTIMIZE_REFRESH_WINDOW (10 minutes)
+						 * added to it, and optimize will run.
+						 */
 
-		private class ExecuteQuery implements DbCommand {
+						long prevMinNextRun = nextUpdate.getAndAccumulate(thisStart,
+								(minNextRun, curTime) -> {
+									return curTime >= minNextRun ? curTime + MAX_TIME_BETWEEN_OPTIMIZE : minNextRun;
+								});
 
-			private final Statement statement;
-			private final String query;
+						// no optimize to be performed yet; return
+						if (thisStart >= prevMinNextRun) {
+
+							// run optimize
+							try (Statement statement = getStatement(conn)) {
+								statement.execute("PRAGMA optimize");
+							} catch (Throwable t) {
+								logger.log(Level.WARNING, "Unable to do optimization of database", t);
+							}
+						}
+					}
+
+					// track time taken
+					long endTime = System.currentTimeMillis();
+					timeInOptimize.addAndGet(endTime - thisStart);
+				}
+			}
+		}
+
+		private class ExecuteQuery extends QueryCommand implements DbCommand {
+
+			private final Statement statement;	
+		private final String query;
 			private ResultSet resultSet;
 
 			ExecuteQuery(Statement statement, String query) {
@@ -14035,22 +14111,26 @@ public class SleuthkitCase {
 			ResultSet getResultSet() {
 				return resultSet;
 			}
+			
+			@Override
+			Statement getStatement(java.sql.Connection conn) throws SQLException {
+				return statement;
+			}
+			
+			@Override
+			java.sql.Connection getConnection() throws SQLException {
+				return statement.getConnection();
+			}
 
 			@Override
 			public void execute() throws SQLException {
-				if (SleuthkitCase.this.dbType == DbType.SQLITE) {
-					// run pragma optimize before start
-					long thisStart = System.currentTimeMillis();
-					statement.execute("PRAGMA optimize");
-					long endTime = System.currentTimeMillis();
-					timeInOptimize.addAndGet(endTime - thisStart);
-				}
-				
+				runOptimize();
 				resultSet = statement.executeQuery(query);
 			}
 		}
+		
 
-		private class ExecutePreparedStatementQuery implements DbCommand {
+		private class ExecutePreparedStatementQuery extends QueryCommand implements DbCommand {
 
 			private final PreparedStatement preparedStatement;
 			private ResultSet resultSet;
@@ -14062,20 +14142,20 @@ public class SleuthkitCase {
 			ResultSet getResultSet() {
 				return resultSet;
 			}
+			
+			@Override
+			Statement getStatement(java.sql.Connection conn) throws SQLException {
+				return conn.createStatement();
+			}
+			
+			@Override
+			java.sql.Connection getConnection() throws SQLException {
+				return preparedStatement.getConnection();
+			}
 
 			@Override
 			public void execute() throws SQLException {
-				if (SleuthkitCase.this.dbType == DbType.SQLITE) {
-					// run pragma optimize before start
-					long thisStart = System.currentTimeMillis();
-					java.sql.Connection conn = preparedStatement.getConnection();
-					try (Statement stmt = conn.createStatement()) {
-						stmt.execute("PRAGMA optimize");
-					}
-					long endTime = System.currentTimeMillis();
-					timeInOptimize.addAndGet(endTime - thisStart);
-				}
-
+				runOptimize();
 				resultSet = preparedStatement.executeQuery();
 			}
 		}
