@@ -25,6 +25,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.eventbus.EventBus;
 import com.google.gson.Gson;
 import com.mchange.v2.c3p0.ComboPooledDataSource;
+import com.mchange.v2.c3p0.AbstractConnectionCustomizer;
 import com.mchange.v2.c3p0.DataSources;
 import com.mchange.v2.c3p0.PooledDataSource;
 import com.zaxxer.sparsebits.SparseBitSet;
@@ -68,6 +69,7 @@ import java.util.Properties;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.UUID;
+import java.util.WeakHashMap;
 import java.util.concurrent.CompletableFuture; 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -13845,9 +13847,6 @@ public class SleuthkitCase {
 	private final class SQLiteConnections extends ConnectionPool {
 
 		private final Map<String, String> configurationOverrides = new HashMap<String, String>();
-		
-		// the total time taken to run PRAGMA OPTIMIZE. 
-		private final AtomicLong timeInOptimize = new AtomicLong(0);
 
 		SQLiteConnections(String dbPath, boolean useWAL) throws SQLException {
 			configurationOverrides.put("acquireIncrement", "2");
@@ -13860,6 +13859,7 @@ public class SleuthkitCase {
 			configurationOverrides.put("maxPoolSize", "20");
 			configurationOverrides.put("maxStatements", "200");
 			configurationOverrides.put("maxStatementsPerConnection", "20");
+			configurationOverrides.put("connectionCustomizerClassName", "org.sleuthkit.datamodel.SleuthkitCase$SqliteConnectionCustomizer");
 
 			SQLiteConfig config = new SQLiteConfig();
 			config.setSynchronous(SQLiteConfig.SynchronousMode.OFF); // Reduce I/O operations, we have no OS crash recovery anyway.
@@ -13869,6 +13869,7 @@ public class SleuthkitCase {
 				config.setJournalMode(SQLiteConfig.JournalMode.WAL);
 			}
 			SQLiteDataSource unpooled = new SQLiteDataSource(config);
+			
 			unpooled.setUrl("jdbc:sqlite:" + dbPath);
 			setPooledDataSource((PooledDataSource) DataSources.pooledDataSource(unpooled, configurationOverrides));
 		}
@@ -13883,40 +13884,81 @@ public class SleuthkitCase {
 				}
 			}
 			java.sql.Connection conn = getPooledDataSource().getConnection();
-			runOptimize(conn);
 			CaseDbConnection caseDbConn = new SQLiteConnection(conn);
 			return caseDbConn;
 		}
+	}
+	
+	/**
+	 * This class runs PRAGMA optimize on each connection on initialization and
+	 * periodically (a minimum of 5 minutes; checked onCheckOut). This is for
+	 * sqlite optimization. See
+	 * https://www.sqlite.org/pragma.html#pragma_optimize for more information.
+	 *
+	 * NOTE: This class should not be used outside of SleuthkitCase. It is only
+	 * public so the sqlite drivers can find the class.
+	 */
+	@Deprecated
+	public final static class SqliteConnectionCustomizer extends AbstractConnectionCustomizer {
+		private static final long MAX_TIME_BETWEEN_OPTIMIZE = 5 * 60 * 1000;
+		
+		// Tracks the minimum time of the next run of optimize.
+		private final Map<Connection, AtomicLong> minNextOptimize = new WeakHashMap<>();
 
-		/**
-		 * Performs optimization based on
-		 * https://www.sqlite.org/pragma.html#pragma_optimize advice regarding
-		 * long-lived connections.
-		 */
-		private void runOptimize(java.sql.Connection conn) {
-
-			// get current time
+		// the total time taken to run PRAGMA OPTIMIZE. 
+		private final AtomicLong timeInOptimize = new AtomicLong(0);
+		
+		@Override
+		public void onCheckOut(java.sql.Connection c, String parentDataSourceIdentityToken) {
 			long thisStart = System.currentTimeMillis();
+			AtomicLong nextUpdate = minNextOptimize.get(c);
+			if (nextUpdate == null) {
+				// run optimize; assume for the first time
+				try (Statement statement = c.createStatement()) {
+					statement.execute("PRAGMA optimize=0x10002");
+				} catch (Throwable t) {
+					logger.log(Level.WARNING, "Unable to do initial optimization of database", t);
+				}
+				minNextOptimize.put(c, new AtomicLong(thisStart + MAX_TIME_BETWEEN_OPTIMIZE));
+			} else {
+				/**
+				 * Atomically checks the minimum next run time and updates if
+				 * necessary. If current start time is greater than or equal to
+				 * the current minNextRun time, the minNextRun time will be
+				 * updated to be the current start time with
+				 * OPTIMIZE_REFRESH_WINDOW (10 minutes) added to it, and
+				 * optimize will run.
+				 */
 
-			// run optimize
-			try (Statement statement = conn.createStatement()) {
-				statement.execute("PRAGMA optimize");
-			} catch (Throwable t) {
-				logger.log(Level.WARNING, "Unable to do optimization of database", t);
+				long prevMinNextRun = nextUpdate.getAndAccumulate(thisStart,
+						(minNextRun, curTime) -> {
+							return curTime >= minNextRun ? curTime + MAX_TIME_BETWEEN_OPTIMIZE : minNextRun;
+						});
+
+				// no optimize to be performed yet; return
+				if (thisStart >= prevMinNextRun) {
+
+					// run optimize
+					try (Statement statement = c.createStatement()) {
+						statement.execute("PRAGMA optimize");
+					} catch (Throwable t) {
+						logger.log(Level.WARNING, "Unable to do optimization of database", t);
+					}
+				}
 			}
 
 			// track time taken
 			long endTime = System.currentTimeMillis();
 			timeInOptimize.addAndGet(endTime - thisStart);
 		}
-
+		
 		@Override
-		void close() throws TskCoreException {
-			logger.info("Time running 'PRAGMA optimize' was " + this.timeInOptimize + "ms.");
-			super.close();
+		public void onDestroy(java.sql.Connection c, String parentDataSourceIdentityToken) {
+			this.minNextOptimize.remove(c);
+			if (this.minNextOptimize.isEmpty()) {
+				logger.info("Time running optimize was " + this.timeInOptimize + "ms.");
+			}
 		}
-		
-		
 	}
 
 	/**
