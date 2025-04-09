@@ -67,6 +67,8 @@
 		<copy file="${jni.dylib}" tofile="${x86_64}/mac/${jni.jnilib}" overwrite="true"/>
 		<!-- amd64 -->
 		<copy file="${jni.dylib}" tofile="${amd64}/mac/${jni.jnilib}" overwrite="true"/>
+		<!-- aarch64 -->
+		<copy file="${jni.dylib}" tofile="${aarch64}/mac/${jni.jnilib}" overwrite="true"/>
 	</target>
 
 	<!-- Non-OS X -->

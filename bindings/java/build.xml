@@ -33,6 +33,7 @@
 	<property name="i386" location="build/NATIVELIBS/i386"/>
 	<property name="i586" location="build/NATIVELIBS/i586"/>
 	<property name="i686" location="build/NATIVELIBS/i686"/>
+	<property name="aarch64" location="build/NATIVELIBS/aarch64"/>
 
 	<!-- Only added win folders for now -->
 	<target name="init">
@@ -54,6 +55,7 @@
 		<mkdir dir="${x86_64}/win"/>
 		<mkdir dir="${x86_64}/mac"/>
 		<mkdir dir="${x86_64}/linux"/>
+		<mkdir dir="${aarch64}/mac"/>
 		<mkdir dir="${i386}"/>
 		<mkdir dir="${i386}/win"/>
 		<mkdir dir="${i386}/linux"/>
